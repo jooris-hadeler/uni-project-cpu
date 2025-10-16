@@ -14,19 +14,19 @@ architecture testbench of EXTest is
 
     component EX is
         port (
-            imm, pc, alu_val, reg_val: in signed(31 downto 0);
-            opcode, rt, rd: in signed(4 downto 0);
-            clk, mux_sel, write_sel, wE, rE, mem_to_reg_EX, reg_write_EX: in std_logic;        
-            pc_offs, out_result, data: out signed(31 downto 0);
-            write_reg: out signed(4 downto 0);
-            wE_out, rE_out, mem_to_reg_MEM, reg_write_MEM : out std_logic);
+        imm, pc, alu_val, reg_val: in std_logic_vector(31 downto 0); -- inputs ergänzen
+        opcode, rt, rd: in std_logic_vector(4 downto 0);
+        clk, mux_sel, write_sel, wE, rE, mem_to_reg_EX, reg_write_EX: in std_logic; -- mux_sel für alu, write_sel für befehls_mux unten bild            
+        pc_offs, out_result, data: out std_logic_vector(31 downto 0);
+        write_reg: out std_logic_vector(4 downto 0); -- wird durchgereicht vom mux
+        wE_out, rE_out, mem_to_reg_MEM, reg_write_MEM : out std_logic);
     end component EX;
     
-    signal imm_in, pc_in, alu_val_in, reg_val_in: signed(31 downto 0);
-    signal opcode_in, rt_in, rd_in:  signed(4 downto 0);
+    signal imm_in, pc_in, alu_val_in, reg_val_in: std_logic_vector(31 downto 0);
+    signal opcode_in, rt_in, rd_in:  std_logic_vector(4 downto 0);
     signal clk_in, mux_sel_in, write_sel_in, wE_in, rE_in, mem_to_reg_EX_in, reg_write_EX_in: std_logic;
-    signal pc_offs_out, out_result_out, data_out: signed(31 downto 0);
-    signal write_reg_out: signed(4 downto 0); 
+    signal pc_offs_out, out_result_out, data_out: std_logic_vector(31 downto 0);
+    signal write_reg_out: std_logic_vector(4 downto 0); 
     signal wE_out_out, rE_out_out, mem_to_reg_MEM_out, reg_write_MEM_out : std_logic;
 
 begin
@@ -36,14 +36,14 @@ begin
     EXPr: process is
     begin
 
-        imm_in <= to_signed(1, 32);
-        pc_in <= to_signed(1, 32);
-        alu_val_in <= to_signed(1, 32);
-        reg_val_in <= to_signed(1, 32);
+        imm_in <= "00000000000000000000000000000001";
+        pc_in <= "00000000000000000000000000000001";
+        alu_val_in <= "00000000000000000000000000000001";
+        reg_val_in <= "00000000000000000000000000000001";
 
-        opcode_in <= to_signed(1, 5);
-        rt_in <= to_signed(1, 5);
-        rd_in <= to_signed(1, 5);
+        opcode_in <= "00001";
+        rt_in <= "00001";
+        rd_in <= "00001";
         
         mux_sel_in <= '1';
         write_sel_in <= '1';

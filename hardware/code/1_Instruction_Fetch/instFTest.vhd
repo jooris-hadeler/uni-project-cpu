@@ -2,12 +2,14 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
-entity instF_tb is
--- Testbench hat keine Ports
-end instF_tb;
+entity instFTest is
+    generic(	
+        periodC	: time		:= 10 ns;
+        cyclesC	: integer	:= 100);
+end instFTest;
 
-architecture Behavioral of instF_tb is
-    -- Komponente instf_seg instanziieren
+architecture Behavioral of instFTest is
+    -- Komponente instfTest instanziieren
     component instf_seg
         Port (
             pc_in       : in  std_logic_vector(31 downto 0);
@@ -24,7 +26,6 @@ architecture Behavioral of instF_tb is
     signal instruction : std_logic_vector(31 downto 0);
 
     -- Taktgenerator
-    constant clk_period : time := 10 ns;
 begin
     -- Instanz des zu testenden Moduls
     uut: instf_seg
@@ -38,10 +39,13 @@ begin
     -- Taktprozess
     clk_process: process
     begin
-        clk <= '0';
-        wait for clk_period/2;
-        clk <= '1';
-        wait for clk_period/2;
+        for i in 1 to cyclesC loop
+            clk <= '0';
+            wait for periodC/2;
+            clk <= '1';
+            wait for periodC/2;
+        end loop;
+        wait;
     end process;
 
     -- Testszenarien
@@ -51,7 +55,7 @@ begin
         pc_in <= x"00000000";
         wait for 20 ns;
 
-        -- PC erhÃ¶hen und prÃ¼fen
+        -- PC erhöhen und prüfen
         pc_in <= x"00000004";
         wait for 20 ns;
 
@@ -62,4 +66,4 @@ begin
         -- Testende
         wait;
     end process;
-end Behavioral;
+end architecture Behavioral;

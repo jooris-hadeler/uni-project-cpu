@@ -3,15 +3,15 @@ use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 use work.memPkg.all;
 
-entity ramIO_tb is
-end ramIO_tb;
+entity ram_tb is
+end ram_tb;
 
-architecture test of ramIO_tb is
+architecture test of ram_tb is
     -- Komponente des RAM-Moduls
     component ramIO
         generic (	addrWd	: integer range 2 to 16	:= 8;
 		dataWd	: integer range 2 to 32	:= 32;
-		fileId	: string  := "memoryram.dat"); 
+		fileId	: string  := "work/memoryram.dat"); 
     port ( --	nCS	: in    std_logic;
 		nWE	: in    std_logic;
 	        addr	: in    std_logic_vector(addrWd-1 downto 0);
@@ -28,11 +28,11 @@ signal fileIO  : fileIoT := none;
 
 begin
     -- Instanz des RAM-Moduls
-    uut: entity work.ramIO
+    uut: ramIO
     generic map (
         addrWd => 8,  
         dataWd => 32,  
-        fileId => "memoryram.dat"
+        fileId => "work/memoryram.dat"
     )
     port map (
         nWE   => nWE,       
@@ -73,6 +73,7 @@ begin
         -- 📌 Testende (Fehlerbehebung: `severity note` statt `failure`)
         wait for 50 ns;
         report "Test beendet." severity note;
+        wait;
     end process;
 
 end test;

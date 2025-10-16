@@ -1,36 +1,59 @@
 GHDL = ghdl
-TOP_ENTITY = ramIO_tb
 WORKDIR = work
 
-all: run
-
-analyze:
+basics:
 	$(GHDL) -a -fsynopsys --workdir=$(WORKDIR) "references/memorySim/memPkg.vhd"
 	$(GHDL) -a -fsynopsys --workdir=$(WORKDIR) "references/memorySim/rom.vhd"
 	$(GHDL) -a -fsynopsys --workdir=$(WORKDIR) "references/memorySim/ramB.vhd"
 	$(GHDL) -a -fsynopsys --workdir=$(WORKDIR) "references/memorySim/ramIO.vhd"
-	$(GHDL) -a -fsynopsys --workdir=$(WORKDIR) "code/1_Instruction_Fetch/IF.vhd"
-	$(GHDL) -a -fsynopsys --workdir=$(WORKDIR) "code/1_Instruction_Fetch/IFTest.vhd"
-	$(GHDL) -a -fsynopsys --workdir=$(WORKDIR) "code/2_Instruction_Decode/funct_codes.vhd"
-	$(GHDL) -a -fsynopsys --workdir=$(WORKDIR) "code/2_Instruction_Decode/opcodes.vhd"
-	$(GHDL) -a -fsynopsys --workdir=$(WORKDIR) "code/2_Instruction_Decode/registerbank.vhd"
-	$(GHDL) -a -fsynopsys --workdir=$(WORKDIR) "code/2_Instruction_Decode/registerbankTest.vhd"
-	$(GHDL) -a -fsynopsys --workdir=$(WORKDIR) "code/2_Instruction_Decode/ID.vhd"
-	$(GHDL) -a -fsynopsys --workdir=$(WORKDIR) "code/2_Instruction_Decode/IDTest.vhd"
-	$(GHDL) -a -fsynopsys --workdir=$(WORKDIR) "code/3_Execution/alu_opcode.vhd"
-	$(GHDL) -a -fsynopsys --workdir=$(WORKDIR) "code/3_Execution/alu.vhd"
-	$(GHDL) -a -fsynopsys --workdir=$(WORKDIR) "code/3_Execution/aluTest.vhd"
-	$(GHDL) -a -fsynopsys --workdir=$(WORKDIR) "code/3_Execution/EX.vhd"
-	$(GHDL) -a -fsynopsys --workdir=$(WORKDIR) "code/3_Execution/EXTest.vhd"
-	$(GHDL) -a -fsynopsys --workdir=$(WORKDIR) "code/4_Memory_Access/MEM.vhd"
-	$(GHDL) -a -fsynopsys --workdir=$(WORKDIR) "code/4_Memory_Access/MEMTest.vhd"
-	$(GHDL) -a -fsynopsys --workdir=$(WORKDIR) "code/5_Write_Back/WB.vhd"
-	$(GHDL) -a -fsynopsys --workdir=$(WORKDIR) "code/5_Write_Back/WBTest.vhd"
+
+	$(GHDL) -a --workdir=$(WORKDIR) "code/2_Instruction_Decode/funct_codes.vhd"
+	$(GHDL) -a --workdir=$(WORKDIR) "code/2_Instruction_Decode/opcodes.vhd"
+	$(GHDL) -a --workdir=$(WORKDIR) "code/2_Instruction_Decode/registerbank.vhd"
+	$(GHDL) -a --workdir=$(WORKDIR) "code/2_Instruction_Decode/registerbankTest.vhd"
+	$(GHDL) -e --workdir=$(WORKDIR) "registerbankTest"
+	$(GHDL) -r --workdir=$(WORKDIR) "registerbankTest" --vcd=work/registerbankTest.vcd
+
+	$(GHDL) -a --workdir=$(WORKDIR) "code/3_Execution/alu_opcode.vhd"
+	$(GHDL) -a --workdir=$(WORKDIR) "code/3_Execution/alu.vhd"
+	$(GHDL) -a --workdir=$(WORKDIR) "code/3_Execution/aluTest.vhd"
+	$(GHDL) -e --workdir=$(WORKDIR) "aluTest"
+	$(GHDL) -r --workdir=$(WORKDIR) "aluTest" --vcd=work/aluTest.vcd
+
+ram:
 	$(GHDL) -a -fsynopsys --workdir=$(WORKDIR) "code/ram_tb.vhd"
-	$(GHDL) -a -fsynopsys --workdir=$(WORKDIR) "code/Prozessor.vhd"
-elaborate:
-	$(GHDL) -e -fsynopsys --workdir=$(WORKDIR) $(TOP_ENTITY)
+	$(GHDL) -e -fsynopsys --workdir=$(WORKDIR) "ram_tb"
+	$(GHDL) -r -fsynopsys --workdir=$(WORKDIR) "ram_tb" --vcd=work/ram_tb.vcd
 
-run: analyze elaborate
-	$(GHDL) -r  -fsynopsys $(TOP_ENTITY) --wave=simulation.ghw
 
+IF:
+	$(GHDL) -a --workdir=$(WORKDIR) "code/1_Instruction_Fetch/instF.vhd"
+	$(GHDL) -a --workdir=$(WORKDIR) "code/1_Instruction_Fetch/instFTest.vhd"
+	$(GHDL) -e --workdir=$(WORKDIR) "instFTest"
+	$(GHDL) -r --workdir=$(WORKDIR) "instfTest" --vcd=work/instFTest.vcd
+
+ID:
+	$(GHDL) -a --workdir=$(WORKDIR) "code/2_Instruction_Decode/ID.vhd"
+	$(GHDL) -a --workdir=$(WORKDIR) "code/2_Instruction_Decode/IDTest.vhd"
+	$(GHDL) -e --workdir=$(WORKDIR) "IDTest"
+	$(GHDL) -r --workdir=$(WORKDIR) "IDTest" --vcd=work/IDTest.vcd
+
+EX:
+	$(GHDL) -a --workdir=$(WORKDIR) "code/3_Execution/EX.vhd"
+	$(GHDL) -a --workdir=$(WORKDIR) "code/3_Execution/EXTest.vhd"
+	$(GHDL) -e --workdir=$(WORKDIR) "EXTest"
+	$(GHDL) -r --workdir=$(WORKDIR) "EXTest" --vcd=work/EXTest.vcd
+MEM:
+	$(GHDL) -a --workdir=$(WORKDIR) "code/4_Memory_Access/MEM.vhd"
+	$(GHDL) -a --workdir=$(WORKDIR) "code/4_Memory_Access/MEMTest.vhd"
+	$(GHDL) -e --workdir=$(WORKDIR) "MEMTest"
+	$(GHDL) -r --workdir=$(WORKDIR) "MEMTest" --vcd=work/MEMTest.vcd
+WB:
+	$(GHDL) -a --workdir=$(WORKDIR) "code/5_Write_Back/WB.vhd"
+	$(GHDL) -a --workdir=$(WORKDIR) "code/5_Write_Back/WBTest.vhd"
+	$(GHDL) -e --workdir=$(WORKDIR) "WBTest"
+	$(GHDL) -r --workdir=$(WORKDIR) "WBTest" --vcd=work/WBFTest.vcd
+
+processor:
+	$(GHDL) -a --workdir=$(WORKDIR) "code/Prozessor.vhd"
+	$(GHDL) -e --workdir=$(WORKDIR) "Prozessor" --vcd=work/Prozessor.vcd
