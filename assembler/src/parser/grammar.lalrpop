@@ -43,6 +43,12 @@ Content: ast::Content = {
     Label => ast::Content::Label(<>),
     Macro => ast::Content::Macro(<>),
     Include => ast::Content::Include(<>),
+    Definition => ast::Content::Definition(<>),
+};
+
+Definition: ast::Definition = {
+    "define" <s: @L> <name: "IDENTIFIER"> <e: @R> <value: Argument> "\n"
+    => ast::Definition { name, value, name_span: (s, e) }
 };
 
 Include: ast::Include = {
@@ -60,12 +66,17 @@ Macro: ast::Macro = {
     },
 };
 
-Replacement: Vec<ast::Instruction> = {
-    <mut repl: Replacement> <instr: Instruction> => {
+Replacement: Vec<ast::Content> = {
+    <mut repl: Replacement> <instr: InstrOrLabel> => {
         repl.push(instr);
         repl
     },
-    <instr: Instruction> => vec![instr],
+    <instr: InstrOrLabel> => vec![instr],
+};
+
+InstrOrLabel: ast::Content = {
+    Instruction => ast::Content::Instruction(<>),
+    Label => ast::Content::Label(<>),
 };
 
 Label: ast::Label = {

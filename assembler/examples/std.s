@@ -26,9 +26,11 @@ end
 
 -- jump to a subroutine
 macro jsr 1
-    addi $28, $ip, 3 -- skip the add instruction and the expanded push
+    mov  $28, jsr_end
     push $28
-    jmp %1
+    jmp  %1
+
+jsr_end:
 end
 
 -- return from a subroutine

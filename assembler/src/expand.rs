@@ -8,7 +8,7 @@ use std::{
 use crate::{
     lexer::{self, LexError},
     parser::{self, ParseError, ast},
-    util::{StringId, resolve},
+    util::{StringId, intern, resolve},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -55,6 +55,9 @@ pub enum ExpandError {
         path_span: (usize, usize),
     },
 
+    /// Raised when encountering a parameter outside of a macro.
+    ParameterOutsideOfMacro { span: (usize, usize) },
+
     /// Raised when an error occured while parsing an include.
     Parse {
         path: PathBuf,
@@ -77,20 +80,26 @@ pub fn expand(program: ast::Program, self_name: StringId) -> Result<ast::Program
 
 struct Expander {
     macros: HashMap<StringId, ast::Macro>,
+    macro_labels: HashMap<StringId, HashSet<StringId>>,
+    definitions: HashMap<StringId, ast::Argument>,
     macro_dependency: HashMap<StringId, HashSet<StringId>>,
     includes: HashSet<StringId>,
+    macro_counter: usize,
 }
 
 impl Expander {
     pub fn new(self_name: StringId) -> Self {
         Self {
             macros: HashMap::new(),
+            macro_labels: HashMap::new(),
+            definitions: HashMap::new(),
             macro_dependency: HashMap::new(),
             includes: {
                 let mut set = HashSet::new();
                 set.insert(self_name);
                 set
             },
+            macro_counter: 0,
         }
     }
 
@@ -125,41 +134,43 @@ impl Expander {
                     // check if this is a macro invokation
                     // if not just append the instruction and continue
                     let Some(macro_) = self.macros.get(&instruction.mnemonic) else {
-                        new_nodes.push(ast::Content::Instruction(instruction));
+                        let ast::Instruction {
+                            mnemonic,
+                            mnemonic_span,
+                            args,
+                        } = instruction;
+
+                        let mut new_args = Vec::new();
+
+                        for arg in args {
+                            match arg.kind {
+                                ast::ArgumentKind::Identifier(ident) => {
+                                    let Some(value) = self.definitions.get(&ident) else {
+                                        new_args.push(arg);
+                                        continue;
+                                    };
+
+                                    new_args.push(*value);
+                                }
+                                _ => new_args.push(arg),
+                            }
+                        }
+
+                        new_nodes.push(ast::Content::Instruction(ast::Instruction {
+                            mnemonic,
+                            mnemonic_span,
+                            args: new_args,
+                        }));
+
                         continue;
                     };
 
                     // add replacement
                     for repl in &macro_.replacement {
-                        let mut args = Vec::new();
-
-                        // resolve arguments
-                        for arg in &repl.args {
-                            match arg.kind {
-                                ast::ArgumentKind::Parameter(index) => {
-                                    // we don't need to check the index here since
-                                    // the validation was done when the macro was first found
-
-                                    args.push(
-                                        instruction
-                                            .args
-                                            .get(index - 1)
-                                            .copied()
-                                            .expect("BUG: macro argument out of bounds"),
-                                    );
-                                }
-                                ast::ArgumentKind::Identifier(_)
-                                | ast::ArgumentKind::Register(_)
-                                | ast::ArgumentKind::Number(_) => args.push(*arg),
-                            }
-                        }
-
-                        new_nodes.push(ast::Content::Instruction(ast::Instruction {
-                            mnemonic: repl.mnemonic,
-                            mnemonic_span: repl.mnemonic_span,
-                            args,
-                        }));
+                        new_nodes.push(self.create_replacement(repl, &instruction.args, macro_)?);
                     }
+
+                    self.macro_counter += 1;
 
                     // set changed to true to indicate that we need atleast one more iteration
                     changed = true;
@@ -186,6 +197,28 @@ impl Expander {
                         content,
                     }));
                 }
+                ast::Content::Definition(def) => {
+                    // check for duplicated definitions
+                    if let Some(prev_definition) = self.definitions.get(&def.name) {
+                        return Err(ExpandError::DuplicatedDefinition {
+                            name: def.name,
+                            first_span: prev_definition.span,
+                            current_span: def.name_span,
+                        });
+                    }
+
+                    // validate argument kind
+                    let ast::ArgumentKind::Parameter(_) = def.value.kind else {
+                        return Err(ExpandError::ParameterOutsideOfMacro {
+                            span: def.value.span,
+                        });
+                    };
+
+                    // insert definition into lookup table
+                    self.definitions.insert(def.name, def.value);
+
+                    changed = true;
+                }
                 ast::Content::Macro(macro_) => {
                     // check for duplicated macros
                     if let Some(prev_macro) = self.macros.get(&macro_.name) {
@@ -206,31 +239,45 @@ impl Expander {
 
                     let num_args = macro_.num_args as usize;
 
+                    let entry = self.macro_labels.entry(macro_.name).or_default();
+
                     // validate replacement
                     for repl in &macro_.replacement {
-                        for arg in &repl.args {
-                            let &ast::Argument {
-                                kind: ast::ArgumentKind::Parameter(index),
-                                span,
-                            } = arg
-                            else {
-                                continue;
-                            };
+                        match repl {
+                            ast::Content::Instruction(instr) => {
+                                for arg in &instr.args {
+                                    let &ast::Argument {
+                                        kind: ast::ArgumentKind::Parameter(index),
+                                        span,
+                                    } = arg
+                                    else {
+                                        continue;
+                                    };
 
-                            if index > num_args || index == 0 {
-                                return Err(ExpandError::OutOfBounds {
-                                    arg_span: span,
-                                    index,
-                                    length: num_args,
-                                });
+                                    if index > num_args || index == 0 {
+                                        return Err(ExpandError::OutOfBounds {
+                                            arg_span: span,
+                                            index,
+                                            length: num_args,
+                                        });
+                                    }
+                                }
                             }
+                            ast::Content::Label(label) => {
+                                entry.insert(label.name);
+                            }
+                            _ => unreachable!(),
                         }
                     }
 
                     // insert macro dependecies
                     let entry = self.macro_dependency.entry(macro_.name).or_default();
 
-                    for instr in &macro_.replacement {
+                    for repl in &macro_.replacement {
+                        let ast::Content::Instruction(instr) = repl else {
+                            continue;
+                        };
+
                         entry.insert(instr.mnemonic);
                     }
 
@@ -247,6 +294,77 @@ impl Expander {
         }
 
         Ok((new_nodes, changed))
+    }
+
+    fn create_replacement(
+        &self,
+        repl: &ast::Content,
+        args: &[ast::Argument],
+        macro_: &ast::Macro,
+    ) -> Result<ast::Content, ExpandError> {
+        match repl {
+            ast::Content::Instruction(instr) => {
+                let mut new_args = Vec::new();
+
+                // resolve arguments
+                for arg in &instr.args {
+                    match arg.kind {
+                        ast::ArgumentKind::Parameter(index) => {
+                            // we don't need to check the index here since
+                            // the validation was done when the macro was first found
+
+                            new_args.push(
+                                args.get(index - 1)
+                                    .copied()
+                                    .expect("BUG: macro argument out of bounds"),
+                            );
+                        }
+                        ast::ArgumentKind::Identifier(ident) => {
+                            // check if we are referencing a local label
+                            if !self
+                                .macro_labels
+                                .get(&macro_.name)
+                                .unwrap()
+                                .contains(&ident)
+                            {
+                                new_args.push(*arg);
+                                continue;
+                            }
+
+                            let new_label_name =
+                                intern(format!("macro_{}_{}", self.macro_counter, resolve(ident),));
+
+                            new_args.push(ast::Argument {
+                                kind: ast::ArgumentKind::Identifier(new_label_name),
+                                span: arg.span,
+                            });
+                        }
+                        ast::ArgumentKind::Register(_) | ast::ArgumentKind::Number(_) => {
+                            new_args.push(*arg)
+                        }
+                    }
+                }
+
+                Ok(ast::Content::Instruction(ast::Instruction {
+                    mnemonic: instr.mnemonic,
+                    mnemonic_span: instr.mnemonic_span,
+                    args: new_args,
+                }))
+            }
+            ast::Content::Label(label) => {
+                let new_label_name = intern(format!(
+                    "macro_{}_{}",
+                    self.macro_counter,
+                    resolve(label.name),
+                ));
+
+                Ok(ast::Content::Label(ast::Label {
+                    name: new_label_name,
+                    name_span: label.name_span,
+                }))
+            }
+            _ => unreachable!(),
+        }
     }
 
     /// Lex and parse file then return its content

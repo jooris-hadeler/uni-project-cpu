@@ -12,6 +12,14 @@ pub enum Content {
     Macro(Macro),
     Include(Include),
     Expanded(Expanded),
+    Definition(Definition),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Definition {
+    pub name: StringId,
+    pub name_span: (usize, usize),
+    pub value: Argument,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -31,7 +39,7 @@ pub struct Macro {
     pub name: StringId,
     pub name_span: (usize, usize),
     pub num_args: i64,
-    pub replacement: Vec<Instruction>,
+    pub replacement: Vec<Content>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
