@@ -1,0 +1,100 @@
+use crate::{
+    lexer::{Token, Register},
+    util::StringId,
+};
+
+use super::ast;
+
+grammar;
+
+extern {
+    type Location = usize;
+    type Error = &'static str;
+
+    enum Token {
+        "IDENTIFIER" => Token::Identifier(<StringId>),
+        "REGISTER" => Token::Register(<Register>),
+        "PARAMETER" => Token::Parameter(<usize>),
+        "NUMBER" => Token::Number(<i64>),
+        "STRING" => Token::String(<StringId>),
+        
+        "define" => Token::KwDefine,
+        "macro" => Token::KwMacro,
+        "end" => Token::KwEnd,
+        "include" => Token::KwInclude,
+
+        ":" => Token::Colon,
+        "," => Token::Comma,
+
+        "\n" => Token::Newline,
+    }
+}
+
+pub Program: ast::Program = {
+    "\n"? <c: Content> => ast::Program { content: vec![c] },
+    <mut prog: Program> <content: Content> => {
+        prog.content.push(content);
+        prog
+    }
+};
+
+Content: ast::Content = {
+    Instruction => ast::Content::Instruction(<>),
+    Label => ast::Content::Label(<>),
+    Macro => ast::Content::Macro(<>),
+    Include => ast::Content::Include(<>),
+};
+
+Include: ast::Include = {
+    "include" <s: @L> <path: "STRING"> <e: @R> "\n" 
+        => ast::Include { path, path_span: (s, e) }
+};
+
+Macro: ast::Macro = {
+    "macro" <s: @L> <name: "IDENTIFIER"> <e: @R> <num_args: "NUMBER"> "\n"
+        <replacement: Replacement?>
+    "end" "\n" 
+    => {
+        let replacement = replacement.into_iter().flatten().collect();
+        ast::Macro { name, name_span: (s, e), num_args, replacement} 
+    },
+};
+
+Replacement: Vec<ast::Instruction> = {
+    <mut repl: Replacement> <instr: Instruction> => {
+        repl.push(instr);
+        repl
+    },
+    <instr: Instruction> => vec![instr],
+};
+
+Label: ast::Label = {
+    <s: @L> <name: "IDENTIFIER"> <e: @R> ":" "\n" => ast::Label { name, name_span: (s, e) },
+};
+
+Instruction: ast::Instruction = {
+    <s: @L> <mnemonic: "IDENTIFIER"> <e: @R> <args: CommaSep<Argument>?> "\n" 
+    => {
+        let args = args.into_iter().flatten().collect();
+        ast::Instruction { mnemonic, mnemonic_span: (s, e), args }   
+    }
+};
+
+Argument: ast::Argument = {
+    <s: @L> <kind: ArgumentKind> <e: @R> => ast::Argument { kind, span: (s, e) },
+};
+
+ArgumentKind: ast::ArgumentKind = {
+    "IDENTIFIER" => ast::ArgumentKind::Identifier(<>),
+    "PARAMETER" => ast::ArgumentKind::Parameter(<>),
+    "REGISTER" => ast::ArgumentKind::Register(<>),
+    "NUMBER" => ast::ArgumentKind::Number(<>),
+};
+
+CommaSep<T>: Vec<T> = {
+    <mut v: CommaSep<T>> "," <e: T> => {
+        v.push(e);
+        v
+    },
+    <e: T> => vec![e],
+};
