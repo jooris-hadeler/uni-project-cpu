@@ -1,0 +1,9 @@
+[package]
+name = "assembler"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+dashmap = "6.1.0"
+multipeek = "0.1.2"
+once_cell = "1.21.3"
