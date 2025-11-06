@@ -123,7 +123,8 @@ impl<'input> Lexer<'input> {
         })
     }
 
-    fn next_identifier(&mut self) -> Option<Token> {
+    /// This method handles identifier tokens.
+    fn handle_identifier(&mut self) -> Option<Token> {
         let start = self.position;
 
         while self
@@ -148,9 +149,11 @@ impl<'input> Lexer<'input> {
         Some(Token { kind, span, text })
     }
 
-    fn next_parameter(&mut self) -> Option<Token> {
+    /// This method handles parameter tokens.
+    fn handle_parameter(&mut self) -> Option<Token> {
         let start = self.position;
 
+        // skip the % character
         self.bump();
 
         while self
@@ -160,7 +163,7 @@ impl<'input> Lexer<'input> {
             self.bump();
         }
 
-        let text = Some(intern(&self.input[start..self.position]));
+        let text = Some(intern(&self.input[start + 1..self.position]));
 
         let span = Span {
             start,
@@ -174,10 +177,11 @@ impl<'input> Lexer<'input> {
         })
     }
 
-    fn next_number(&mut self) -> Option<Token> {
+    /// This method handles number tokens.
+    fn handle_number(&mut self) -> Option<Token> {
         let start = self.position;
 
-        while self.peek(0).is_some_and(|ch| matches!(ch, '0'..='9')) {
+        while self.peek(0).is_some_and(|ch| ch.is_ascii_digit()) {
             self.bump();
         }
 
@@ -195,17 +199,18 @@ impl<'input> Lexer<'input> {
         })
     }
 
-    fn next_register(&mut self) -> Option<Token> {
+    /// This method handles register tokens.
+    fn handle_register(&mut self) -> Option<Token> {
         let start = self.position;
 
         // skip $ character
         self.bump();
 
-        while self.peek(0).is_some_and(|ch| matches!(ch, '0'..='9')) {
+        while self.peek(0).is_some_and(|ch| ch.is_ascii_digit()) {
             self.bump();
         }
 
-        let text = Some(intern(&self.input[start..self.position]));
+        let text = Some(intern(&self.input[start + 1..self.position]));
 
         let span = Span {
             start,
@@ -266,10 +271,10 @@ impl<'input> Iterator for Lexer<'input> {
         };
 
         let kind = match peek_ch {
-            'a'..='z' | 'A'..='Z' | '_' => return self.next_identifier(),
-            '0'..='9' => return self.next_number(),
-            '$' => return self.next_register(),
-            '%' => return self.next_parameter(),
+            'a'..='z' | 'A'..='Z' | '_' => return self.handle_identifier(),
+            '0'..='9' => return self.handle_number(),
+            '$' => return self.handle_register(),
+            '%' => return self.handle_parameter(),
 
             '+' => token!(_ => Plus),
             '-' => token!(_ => Minus),
