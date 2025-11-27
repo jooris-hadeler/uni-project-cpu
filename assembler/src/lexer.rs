@@ -10,6 +10,15 @@ pub struct Span {
     pub end: usize,
 }
 
+impl Span {
+    pub fn join(&self, other: Span) -> Span {
+        Span {
+            start: self.start.min(other.start),
+            end: self.end.max(other.end),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TokenKind {
     Error,
@@ -17,7 +26,6 @@ pub enum TokenKind {
     Newline,
 
     Identifier,
-    Parameter,
     Register,
     Number,
 
@@ -149,34 +157,6 @@ impl<'input> Lexer<'input> {
         Some(Token { kind, span, text })
     }
 
-    /// This method handles parameter tokens.
-    fn handle_parameter(&mut self) -> Option<Token> {
-        let start = self.position;
-
-        // skip the % character
-        self.bump();
-
-        while self
-            .peek(0)
-            .is_some_and(|ch| matches!(ch, 'a'..='z' | 'A'..='Z' | '0'..='9' | '_'))
-        {
-            self.bump();
-        }
-
-        let text = Some(intern(&self.input[start + 1..self.position]));
-
-        let span = Span {
-            start,
-            end: self.position,
-        };
-
-        Some(Token {
-            kind: TokenKind::Parameter,
-            span,
-            text,
-        })
-    }
-
     /// This method handles number tokens.
     fn handle_number(&mut self) -> Option<Token> {
         let start = self.position;
@@ -274,7 +254,6 @@ impl<'input> Iterator for Lexer<'input> {
             'a'..='z' | 'A'..='Z' | '_' => return self.handle_identifier(),
             '0'..='9' => return self.handle_number(),
             '$' => return self.handle_register(),
-            '%' => return self.handle_parameter(),
 
             '+' => token!(_ => Plus),
             '-' => token!(_ => Minus),

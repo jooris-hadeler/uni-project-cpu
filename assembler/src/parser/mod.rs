@@ -244,7 +244,6 @@ impl<'input> Parser<'input> {
 
     fn parse_expr_impl(&mut self, binding_power: u8) -> Result<Expression, ParserError> {
         let expected = once(TokenKind::Number)
-            .chain(once(TokenKind::Parameter))
             .chain(once(TokenKind::Register))
             .chain(once(TokenKind::Identifier))
             .chain(once(TokenKind::LeftParen))
@@ -276,10 +275,6 @@ impl<'input> Parser<'input> {
 
                 expr
             }
-            TokenKind::Parameter => Expression::Parameter {
-                name: first_token.text.unwrap(),
-                span: first_token.span,
-            },
             TokenKind::Identifier => Expression::Identifier {
                 name: first_token.text.unwrap(),
                 span: first_token.span,
@@ -308,7 +303,11 @@ impl<'input> Parser<'input> {
 
                 let expr = Box::new(self.parse_expr_impl(bp)?);
 
-                Expression::Unary { op, expr }
+                Expression::Unary {
+                    op,
+                    op_span: first_token.span,
+                    expr,
+                }
             }
             _ => {
                 return Err(ParserError::UnexpectedToken {
@@ -328,6 +327,8 @@ impl<'input> Parser<'input> {
                 });
             };
 
+            let op_span = peek_token.span;
+
             let Some((op, left_binding_power, right_binding_power)) =
                 INFIX_OPS.get(&peek_token.kind).copied()
             else {
@@ -344,6 +345,7 @@ impl<'input> Parser<'input> {
 
             lhs = Expression::Binary {
                 op,
+                op_span,
                 left: Box::new(lhs),
                 right: Box::new(rhs),
             };
