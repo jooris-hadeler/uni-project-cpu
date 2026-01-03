@@ -71,6 +71,7 @@ architecture behaviour of ID
                         when funct_gtu => alu_op <= alu_cmpgt_u;
                         when funct_eq => alu_op <= alu_cmpe;
                         when funct_ne => alu_op <= alu_cmpne;
+                        when others => alu_op <= alu_add;
                     end case;
                     rs <= instruction(25 downto 21);
                     rt <= instruction(20 downto 16);
@@ -83,6 +84,7 @@ architecture behaviour of ID
                 when opc_jr => alu_op <= alu_add;
                 when opc_jmp => alu_op <= alu_add;
                 when opc_noop => alu_op <= alu_add;
+                when others => alu_op <= alu_add;
                 end case;
                 pc_out  <= pc_in;
 

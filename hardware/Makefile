@@ -25,12 +25,17 @@ ram:
 	$(GHDL) -e -fsynopsys --workdir=$(WORKDIR) "ram_tb"
 	$(GHDL) -r -fsynopsys --workdir=$(WORKDIR) "ram_tb" --vcd=work/ram_tb.vcd
 
+rom:
+	$(GHDL) -a -fsynopsys --workdir=$(WORKDIR) "code/rom_tb.vhd"
+	$(GHDL) -e -fsynopsys --workdir=$(WORKDIR) "rom_tb"
+	$(GHDL) -r -fsynopsys --workdir=$(WORKDIR) "rom_tb" --vcd=work/rom_tb.vcd
+
 
 IF:
-	$(GHDL) -a --workdir=$(WORKDIR) "code/1_Instruction_Fetch/instF.vhd"
-	$(GHDL) -a --workdir=$(WORKDIR) "code/1_Instruction_Fetch/instFTest.vhd"
-	$(GHDL) -e --workdir=$(WORKDIR) "instFTest"
-	$(GHDL) -r --workdir=$(WORKDIR) "instfTest" --vcd=work/instFTest.vcd
+	$(GHDL) -a -fsynopsys --workdir=$(WORKDIR) "code/1_Instruction_Fetch/instF.vhd"
+	$(GHDL) -a -fsynopsys --workdir=$(WORKDIR) "code/1_Instruction_Fetch/instFTest.vhd"
+	$(GHDL) -e -fsynopsys --workdir=$(WORKDIR) "instFTest"
+	$(GHDL) -r -fsynopsys --workdir=$(WORKDIR) "instfTest" --vcd=work/instFTest.vcd
 
 ID:
 	$(GHDL) -a --workdir=$(WORKDIR) "code/2_Instruction_Decode/ID.vhd"

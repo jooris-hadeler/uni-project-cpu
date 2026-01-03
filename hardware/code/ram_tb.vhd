@@ -50,7 +50,7 @@ begin
 
         -- 📌 Schreibe Wert 0x1234 an Adresse 0x05
         addr   <= "00000101";  
-        dataI  <= std_logic_vector(to_unsigned(16#1234#, 32));  -- 32 Bit Wert (0x1234)
+        dataI  <= std_logic_vector(to_unsigned(16#4321#, 32));  -- 32 Bit Wert (0x1234)
         nWE    <= '0';  -- Schreibmodus aktivieren
         wait for 10 ns;
 
