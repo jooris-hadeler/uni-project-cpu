@@ -11,5 +11,6 @@ package opcodes is
     constant opc_br: STD_LOGIC_VECTOR(5 downto 0) := "000101";
     constant opc_jr: STD_LOGIC_VECTOR(5 downto 0) := "000110";
     constant opc_jmp: STD_LOGIC_VECTOR(5 downto 0) := "000111";
-    constant opc_noop: STD_LOGIC_VECTOR(5 downto 0) := "001000";
+    constant opc_jal: STD_LOGIC_VECTOR(5 downto 0) := "001000";
+    constant opc_noop: STD_LOGIC_VECTOR(5 downto 0) := "111111";
 end opcodes;

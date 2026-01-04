@@ -14,25 +14,28 @@ architecture testbench of IDTest is
 
     component ID is
         port (
-            pc_in, instruction, write_data : in std_logic_vector(31 downto 0);
-            clk, reg_wE :                         in std_logic;
-            write_reg :                      in std_logic_vector(4 downto 0);
-            pc_out, alu_val, reg_val, imm :  out std_logic_vector(31 downto 0);
-            alu_op, rd, rt :                 out std_logic_vector(4 downto 0);
-            alu_src, reg_dest, mem_to_reg_EX, reg_write_EX :              out std_logic -- weitere kontrollsignale hinzufügen
-        );
+        pc_in, instruction, write_data : in std_logic_vector(31 downto 0);
+        clk, reg_wE :                    in std_logic;
+        write_reg :                      in std_logic_vector(4 downto 0);
+        pc_out, alu_val, reg_val, imm :  out std_logic_vector(31 downto 0);
+        alu_op, rt, rd :                 out std_logic_vector(4 downto 0);
+
+        reg_dest, reg_write_EX, alu_src,
+        pc_src, mem_write,
+        mem_to_reg_EX, jr :              out std_logic
+    );
     end component ID;
     
     signal pc_in_in, instruction_in, write_data_in: STD_LOGIC_VECTOR(31 downto 0);
     signal clk_in, reg_wE_in: std_logic;
     signal write_reg_in: STD_LOGIC_VECTOR(4 downto 0);
     signal pc_out_out, alu_val_out, reg_val_out, imm_out: STD_LOGIC_VECTOR(31 downto 0);
-    signal alu_op_out, rs_out, rd_out, rt_out: STD_LOGIC_VECTOR(4 downto 0);
-    signal alu_src_out, reg_dest_out, mem_to_reg_EX_out, reg_write_EX_out: std_logic;
+    signal alu_op_out, rt_out, rd_out: STD_LOGIC_VECTOR(4 downto 0);
+    signal reg_dest_out, reg_write_EX_out, alu_src_out, pc_src_out, mem_write_out, mem_to_reg_EX_out, jr_out: std_logic;
 begin
     IDI: ID port map(pc_in_in, instruction_in, write_data_in, clk_in, reg_wE_in, write_reg_in,
-        pc_out_out, alu_val_out, reg_val_out, imm_out, alu_op_out, rs_out, rd_out, rt_out,
-        alu_src_out, reg_dest_out, mem_to_reg_EX_out, reg_write_EX_out);
+        pc_out_out, alu_val_out, reg_val_out, imm_out, alu_op_out, rt_out, rd_out,
+        reg_dest_out, reg_write_EX_out, alu_src_out, pc_src_out, mem_write_out, mem_to_reg_EX_out, jr_out);
 
     IDP: process is
     begin
@@ -40,11 +43,12 @@ begin
         instruction_in <= "00000000000000000000000000000001";
         write_data_in <= "00000000000000000000000000000001";
         reg_wE_in <= '1';
-        write_reg_in <= "00001";
+        write_reg_in <= "00000";
 
         clk_in <= '0';
         wait for periodC;
         clk_in <= '1'; 
+        wait for periodC;
         wait for periodC;
         wait;
     end process IDP;

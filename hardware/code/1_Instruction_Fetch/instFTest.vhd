@@ -4,7 +4,7 @@ use IEEE.NUMERIC_STD.ALL;
 
 entity instFTest is
     generic(	
-        periodC	: time		:= 2 ns;
+        periodC	: time		:= 10 ns;
         cyclesC	: integer	:= 100);
 end instFTest;
 

@@ -10,11 +10,12 @@ use work.memPkg.all;
 
 entity MEM is 
     port (
-        pc_in, adress_in: in std_logic_vector(31 downto 0);-- in der stufe auf 16 bit kürzen (hinten bleibt)
-        write_data : in std_logic_vector(31 downto 0);
-        clk, writeE, readE, mem_to_reg_in, reg_write_in, mem_to_reg_MEM, reg_write_MEM  : in std_logic;
-        read_data, adress_out, pc_out: out std_logic_vector(31 downto 0);
-        mem_to_reg_WB, reg_write_WB : out std_logic
+        pc_in, address_in, write_data : in std_logic_vector(31 downto 0);
+        clk, mem_write, mem_to_reg_in, reg_write_in : in std_logic;
+        write_reg: in std_logic_vector(4 downto 0);
+        read_data_out, adress_out, pc_out: out std_logic_vector(31 downto 0);
+        mem_to_reg_WB, reg_write_WB : out std_logic;
+        write_reg_out: out std_logic_vector(4 downto 0)
     );
 end entity MEM;
 
@@ -34,8 +35,8 @@ architecture behaviour of MEM is
     end component;
 
     signal nWE: STD_LOGIC := '1';
-    signal read: std_logic_vector(31 downto 0);
-    signal adress : std_logic_vector(15 downto 0);
+    signal read_data: std_logic_vector(31 downto 0);
+    signal address : std_logic_vector(15 downto 0);
     signal sel_alu_val, sel_reg_val : std_logic_vector(4 downto 0);
     signal fileIO_in: fileIoT := none;
     
@@ -44,22 +45,25 @@ architecture behaviour of MEM is
         ramIOI: ramIO   generic map (addrWd => 16,
                                      dataWd => 32,
                                      fileID => "memoryram.dat")
-                        port map (nWE, adress, write_data, read, fileIO_in);
-        nWE <= writeE;
+                        port map (nWE, address, write_data, read_data, fileIO_in);
+                            
         mem_seg_process : process (clk) is
-            begin
-                if rising_edge(clk) then
-                    adress_out <= adress_in;
-                    adress <= adress_in(15 downto 0);
-                    pc_out <= pc_in;
-                    mem_to_reg_WB <= mem_to_reg_in;
-                    reg_write_WB <= reg_write_in;
-                    read_data <= std_logic_vector(read);
-                    if writeE = '0' then
-                        fileIO_in <= dump;
-                    end if;
+        begin
+            if rising_edge(clk) then
+                fileIO_in <= load;
+                nWE <= NOT mem_write;
+                adress_out <= address_in;
+                address <= address_in(15 downto 0);
+                pc_out <= pc_in;
+                mem_to_reg_WB <= mem_to_reg_in;
+                reg_write_WB <= reg_write_in;
+                read_data_out <= std_logic_vector(read_data);
+                write_reg_out <= write_reg;
+                if mem_write = '1' then
+                    fileIO_in <= dump;
                 else
                     fileIO_in <= none;
                 end if;
+            end if;
         end process mem_seg_process;
 end behaviour;

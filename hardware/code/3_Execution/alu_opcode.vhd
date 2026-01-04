@@ -19,4 +19,6 @@ package alu_opcode is
     constant alu_cmpgt_u: STD_LOGIC_VECTOR(4 downto 0) := "01101";
     constant alu_cmplt: STD_LOGIC_VECTOR(4 downto 0) := "01110";
     constant alu_cmplt_u: STD_LOGIC_VECTOR(4 downto 0) := "01111";
+    constant alu_shi: STD_LOGIC_VECTOR(4 downto 0) := "10000";
+    constant alu_slo: STD_LOGIC_VECTOR(4 downto 0) := "10001";
 end alu_opcode;

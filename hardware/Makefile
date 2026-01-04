@@ -49,10 +49,10 @@ EX:
 	$(GHDL) -e --workdir=$(WORKDIR) "EXTest"
 	$(GHDL) -r --workdir=$(WORKDIR) "EXTest" --vcd=work/EXTest.vcd
 MEM:
-	$(GHDL) -a --workdir=$(WORKDIR) "code/4_Memory_Access/MEM.vhd"
-	$(GHDL) -a --workdir=$(WORKDIR) "code/4_Memory_Access/MEMTest.vhd"
-	$(GHDL) -e --workdir=$(WORKDIR) "MEMTest"
-	$(GHDL) -r --workdir=$(WORKDIR) "MEMTest" --vcd=work/MEMTest.vcd
+	$(GHDL) -a -fsynopsys --workdir=$(WORKDIR) "code/4_Memory_Access/MEM.vhd"
+	$(GHDL) -a -fsynopsys --workdir=$(WORKDIR) "code/4_Memory_Access/MEMTest.vhd"
+	$(GHDL) -e -fsynopsys --workdir=$(WORKDIR) "MEMTest"
+	$(GHDL) -r -fsynopsys --workdir=$(WORKDIR) "MEMTest" --vcd=work/MEMTest.vcd
 WB:
 	$(GHDL) -a --workdir=$(WORKDIR) "code/5_Write_Back/WB.vhd"
 	$(GHDL) -a --workdir=$(WORKDIR) "code/5_Write_Back/WBTest.vhd"

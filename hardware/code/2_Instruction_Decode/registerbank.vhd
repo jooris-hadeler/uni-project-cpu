@@ -34,6 +34,3 @@ begin
         end if;
     end process reg_demult;
     end architecture behaviour;
-
-
-    --select register über name christopher ist switch hater

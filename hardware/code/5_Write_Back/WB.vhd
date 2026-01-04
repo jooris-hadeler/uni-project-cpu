@@ -15,7 +15,7 @@ end entity WB;
 
 architecture behaviour of WB is
     begin 
-        write_data <= alu_val when mem_to_reg_WB = '1' else data_val;
+        write_data <= alu_val when mem_to_reg_WB = '0' else data_val;
         write_reg_out <= write_reg_in; 
         write_enable_out <= reg_write_WB; 
 end behaviour; 

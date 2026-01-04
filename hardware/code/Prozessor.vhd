@@ -15,38 +15,43 @@ architecture behaviour of Prozessor is
         pc_in : in std_logic_vector(31 downto 0); -- Eingabe des aktuellen PC Counts
         pc_out: out std_logic_vector(31 downto 0); -- Ausgabe des inkrementierten PC Counts
         instruction: out std_logic_vector (31 downto 0);-- Die gelesene Instruction aus dem ROM
+        pc_src: in std_logic; -- Steuersignal f�r Sprung
         clk : in std_logic -- Takt-Signal
     );
     end component;
 
-    component id_seg is 
+    component ID is 
     port (
         pc_in, instruction, write_data : in std_logic_vector(31 downto 0);
-        reg_wE, clk :                         in std_logic;
+        clk, reg_wE :                    in std_logic;
         write_reg :                      in std_logic_vector(4 downto 0);
         pc_out, alu_val, reg_val, imm :  out std_logic_vector(31 downto 0);
-        alu_op, rd, rt :                 out std_logic_vector(4 downto 0);
-        alu_src, reg_dest, mem_to_reg_EX, reg_write_EX :    out std_logic -- weitere kontrollsignale hinzufügen
+        alu_op, rt, rd :                 out std_logic_vector(4 downto 0);
+
+        reg_dest, reg_write_EX, alu_src,
+        pc_src, mem_write,
+        mem_to_reg_EX, jr :              out std_logic
     );
     end component;
 
     component EX is
     port (
-        imm, pc, alu_val, reg_val: in std_logic_vector(31 downto 0); -- inputs ergänzen
-        opcode, rt, rd: in std_logic_vector(4 downto 0);
-        mux_sel, write_sel, wE, rE, mem_to_reg_EX, reg_write_EX: in std_logic; -- mux_sel für alu, write_sel für befehls_mux unten bild            
-        pc_offs, out_result, data: out std_logic_vector(31 downto 0);
-        write_reg: out std_logic_vector(4 downto 0); -- wird durchgereicht vom mux
-        wE_out, rE_out, mem_to_reg_MEM, reg_write_MEM : out std_logic);
+        imm, pc, alu_val, reg_val: in std_logic_vector(31 downto 0);
+        alu_op, rt, rd: in std_logic_vector(4 downto 0);
+        clk, reg_dest, reg_write_EX, alu_src, pc_src, mem_write, mem_to_reg_EX, jr: in std_logic; -- mux_sel für alu, write_sel für befehls_mux unten bild            
+        pc_out, out_result, data: out std_logic_vector(31 downto 0);
+        write_reg: out std_logic_vector(4 downto 0);
+        mem_write_out, mem_to_reg_MEM, reg_write_MEM : out std_logic);
     end component;
 
    component MEM is 
     port (
-        pc_in, adress_in: in std_logic_vector(31 downto 0);-- in der stufe auf 16 bit kürzen (hinten bleibt)
-        write_data : in std_logic_vector(31 downto 0);
-        clk, writeE, readE, mem_to_reg_in, reg_write_in, mem_to_reg_MEM, reg_write_MEM  : in std_logic;
-        read_data, adress_out, pc_out: out std_logic_vector(31 downto 0);
-        mem_to_reg_WB, reg_write_WB : out std_logic
+        pc_in, address_in, write_data : in std_logic_vector(31 downto 0);
+        clk, mem_write, mem_to_reg_in, reg_write_in : in std_logic;
+        write_reg: in std_logic_vector(4 downto 0);
+        read_data_out, adress_out, pc_out: out std_logic_vector(31 downto 0);
+        mem_to_reg_WB, reg_write_WB : out std_logic;
+        write_reg_out: out std_logic_vector(4 downto 0)
     );
     end component;
 
@@ -66,7 +71,7 @@ architecture behaviour of Prozessor is
     signal pc_ID : std_logic_vector(31 downto 0);
     signal instruction: std_logic_vector(31 downto 0);
 
-    -- signal für instD
+    -- signal für ID
     signal write_data_WB_out, pc_EX, alu_val, reg_val, imm : std_logic_vector(31 downto 0); -- ID
     signal write_enable_WB_out, alu_src, reg_dest : std_logic; -- ID
     signal write_reg_WB_out, alu_op, rd, rt : std_logic_vector(4 downto 0); -- ID
@@ -100,7 +105,7 @@ architecture behaviour of Prozessor is
         clk =>  clk
     );
     
-    instDI: id_seg
+    instDI: ID
     port map(
         pc_in => pc_ID,
         instruction => instruction,

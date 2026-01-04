@@ -9,11 +9,14 @@ use work.alu_opcode.all;
 entity ID is 
     port (
         pc_in, instruction, write_data : in std_logic_vector(31 downto 0);
-        clk, reg_wE :                         in std_logic;
+        clk, reg_wE :                    in std_logic;
         write_reg :                      in std_logic_vector(4 downto 0);
         pc_out, alu_val, reg_val, imm :  out std_logic_vector(31 downto 0);
-        alu_op, rs, rd, rt :                 out std_logic_vector(4 downto 0);
-        alu_src, reg_dest, mem_to_reg_EX, reg_write_EX :              out std_logic -- weitere kontrollsignale hinzufügen
+        alu_op, rt, rd :                 out std_logic_vector(4 downto 0);
+
+        reg_dest, reg_write_EX, alu_src,
+        pc_src, mem_write,
+        mem_to_reg_EX, jr :              out std_logic
     );
 end entity ID;
 architecture behaviour of ID
@@ -47,12 +50,23 @@ architecture behaviour of ID
         id_seg_process : process (clk) is
             begin
 
-            sel_alu_val <= instruction(27 downto 23);
-            sel_reg_val <= instruction(22 downto 18);
-            if rising_edge(clk) then
+                if rising_edge(clk) then
+                    
+                --default control signals
+                reg_dest <= '0';
+                reg_write_EX <= '0';
+                alu_src <= '0';
+                pc_src <= '0';
+                mem_write <= '0';
+                mem_to_reg_EX <= '0';
+                jr <= '0';
+                
+                sel_alu_val <= instruction(20 downto 16);
+                sel_reg_val <= instruction(15 downto 11);
+
                 opcode <= instruction(31 downto 26);
                 case opcode is
-                when opc_r =>
+                    when opc_r =>
                     funct <= instruction(5 downto 0);
                     case funct is
                         when funct_add => alu_op <= alu_add;
@@ -73,26 +87,59 @@ architecture behaviour of ID
                         when funct_ne => alu_op <= alu_cmpne;
                         when others => alu_op <= alu_add;
                     end case;
-                    rs <= instruction(25 downto 21);
-                    rt <= instruction(20 downto 16);
-                    rd <= instruction(15 downto 11);
-                when opc_shi => alu_op <= alu_add;
-                when opc_slo => alu_op <= alu_add;
-                when opc_load => alu_op <= alu_add;
-                when opc_store => alu_op <= alu_add;
-                when opc_br => alu_op <= alu_add;
-                when opc_jr => alu_op <= alu_add;
-                when opc_jmp => alu_op <= alu_add;
-                when opc_noop => alu_op <= alu_add;
-                when others => alu_op <= alu_add;
+                    reg_dest <= '1';
+                    reg_write_EX <= '1';
+                    when opc_shi => 
+                    alu_op <= alu_shi;
+                    alu_src <='1';
+                    reg_write_EX <= '1';
+                    when opc_slo =>
+                    alu_op <= alu_slo;
+                    alu_src <='1';
+                    reg_write_EX <= '1';
+                    when opc_load => 
+                    alu_op <= alu_add;
+                    reg_write_EX <= '1';
+                    alu_src <='1';
+                    mem_to_reg_EX <= '1';
+                    when opc_store => 
+                    alu_op <= alu_add;
+                    alu_src <='1';
+                    mem_write <= '1';
+                    when opc_br => 
+                    sel_reg_val <= "00000";
+                    alu_op <= alu_cmpne;
+                    pc_src <= '0';
+                    when opc_jr => 
+                    sel_reg_val <= instruction(20 downto 16);
+                    alu_op <= alu_sub;
+                    pc_src <= '0';
+                    jr <= '1';
+                    when opc_jmp =>
+                    sel_alu_val <= "00000";
+                    sel_reg_val <= "00000";
+                    alu_op <= alu_sub;
+                    pc_src <= '0';
+                    when opc_jal => 
+                    sel_alu_val <= "00000";
+                    sel_reg_val <= "00000";
+                    alu_op <= alu_sub;
+                    reg_write_EX <= '1';
+                    pc_src <= '0';
+                    when opc_noop => alu_op <= alu_add;
+                    when others => alu_op <= alu_add;
                 end case;
                 pc_out  <= pc_in;
-
+                
                 if instruction(15) = '0' then -- implizites sign extend
                     imm <= "0000000000000000" & instruction(15 downto 0);
-                    else 
+                else 
                     imm <= "1111111111111111" & instruction(15 downto 0);
                 end if;
+
+                rt <= sel_alu_val;
+                rd <= sel_reg_val;
+
             end if;    
         end process id_seg_process;
 end behaviour;
