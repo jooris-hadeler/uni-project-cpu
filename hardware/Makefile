@@ -60,5 +60,7 @@ WB:
 	$(GHDL) -r --workdir=$(WORKDIR) "WBTest" --vcd=work/WBFTest.vcd
 
 processor:
-	$(GHDL) -a --workdir=$(WORKDIR) "code/Prozessor.vhd"
-	$(GHDL) -e --workdir=$(WORKDIR) "Prozessor" --vcd=work/Prozessor.vcd
+	$(GHDL) -a -fsynopsys --workdir=$(WORKDIR) "code/Prozessor.vhd"
+	$(GHDL) -a -fsynopsys --workdir=$(WORKDIR) "code/ProzessorTest.vhd"
+	$(GHDL) -e -fsynopsys --workdir=$(WORKDIR) "Prozessor" 
+	$(GHDL) -r -fsynopsys --workdir=$(WORKDIR) "Prozessor" --vcd=work/ProzessorTest.vcd

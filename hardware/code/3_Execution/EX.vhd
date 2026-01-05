@@ -14,17 +14,18 @@ end entity EX;
 
 architecture behaviour of EX is
     component alu is
-    port(
-        opA, opB: in signed(31 downto 0);
-        result: out  signed(31 downto 0);
-		op: in STD_LOGIC_VECTOR(4 downto 0));
+    port( opA, opB: in signed(31 downto 0);
+         result: out  signed(31 downto 0);
+		 op: in STD_LOGIC_VECTOR(4 downto 0);
+		 zero: out STD_LOGIC);
     end component;
 
     signal alu_result, mux_val: signed(31 downto 0);
     signal imm_signed : signed(31 downto 0);
+    signal zero : STD_LOGIC;
 
     begin
-        aluI: alu	port map (signed(alu_val), mux_val, alu_result, alu_op);
+        aluI: alu	port map (signed(alu_val), mux_val, alu_result, alu_op, zero);
 
             
             ex_seg_process : process (clk) is
@@ -37,9 +38,11 @@ architecture behaviour of EX is
                     mux_val <= signed(imm);
                 end if;
 
-                if pc_src = '1' then 
-                    imm_signed <= signed(imm);
-                    pc_out <= std_logic_vector(signed(pc) + imm_signed); -- adder und shifter (imm -> offset)
+                if pc_src = '1' then
+                    if zero = '1' then
+                        imm_signed <= signed(imm);
+                        pc_out <= std_logic_vector(signed(pc) + imm_signed); -- adder und shifter (imm -> offset)
+                    end if;
                 else 
                     pc_out <= pc;
                 end if;

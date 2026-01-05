@@ -68,32 +68,27 @@ architecture behaviour of Prozessor is
 
     -- signal für instF
     signal pc_IF : std_logic_vector(31 downto 0);
-    signal pc_ID : std_logic_vector(31 downto 0);
-    signal instruction: std_logic_vector(31 downto 0);
-
+    signal pc_src_IF : STD_LOGIC;
+    
     -- signal für ID
-    signal write_data_WB_out, pc_EX, alu_val, reg_val, imm : std_logic_vector(31 downto 0); -- ID
-    signal write_enable_WB_out, alu_src, reg_dest : std_logic; -- ID
-    signal write_reg_WB_out, alu_op, rd, rt : std_logic_vector(4 downto 0); -- ID
+    signal pc_ID, instruction_ID, write_data_ID : std_logic_vector(31 downto 0);
+    signal reg_wE_ID : std_logic; -- ID
+    signal write_reg_ID : std_logic_vector(4 downto 0); -- ID
 
     -- signal für EX
-    signal pc_MEM, alu_result, write_data_EX : std_logic_vector(31 downto 0); -- EX
-    signal write_reg_EX : std_logic_vector(4 downto 0);
-    signal write_enable_EX, read_enable_EX : std_logic;
+    signal imm_EX, pc_EX, alu_val_EX, reg_val_EX : std_logic_vector(31 downto 0); -- EX
+    signal alu_op_EX, rt_EX, rd_EX : std_logic_vector(4 downto 0);
+    signal reg_dest_EX, reg_write_EX, alu_src_EX, pc_src_EX, mem_write_EX, mem_to_reg_EX, jr_EX : std_logic;
 
      -- Signale für MEM-Stufe
-    signal pc_WB, adress_MEM, alu_result_MEM : std_logic_vector(31 downto 0);
-    signal write_data_MEM : std_logic_vector(31 downto 0);
-    signal write_enable_MEM, read_enable_MEM, mem_to_reg_MEM, reg_write_MEM : std_logic;
-    
-    -- Pipeline-Register MEM/WB
-    signal read_data_WB_in, alu_result_WB : std_logic_vector(31 downto 0);
-    signal write_enable_WB_in, mem_to_reg_WB, reg_write_WB : std_logic;
-    signal write_reg_WB_in : std_logic_vector(4 downto 0);
+    signal pc_MEM, address_MEM, write_data_MEM : std_logic_vector(31 downto 0);
+    signal mem_write_MEM, mem_to_reg_MEM, reg_write_MEM : std_logic;
+    signal write_reg_MEM : std_logic_vector(4 downto 0);
     
     -- Signale für WB-Stufe
-    signal write_data_WB : std_logic_vector(31 downto 0);
-    signal write_enable_out : std_logic;
+    signal data_val_WB, alu_val_WB : std_logic_vector(31 downto 0);
+    signal mem_to_reg_WB, reg_write_WB : std_logic;
+    signal write_reg_WB : STD_LOGIC_VECTOR(4 downto 0);
 
     begin
 
@@ -101,139 +96,90 @@ architecture behaviour of Prozessor is
     port map (
         pc_in => pc_IF,
         pc_out => pc_ID,
-        instruction => instruction,
+        instruction => instruction_ID,
+        pc_src => pc_src_IF,
         clk =>  clk
     );
     
-    instDI: ID
+    IDI: ID
     port map(
         pc_in => pc_ID,
-        instruction => instruction,
-        write_data => write_data_WB_out,
-        reg_wE =>  write_enable_WB_out,                   
-        write_reg => write_reg_WB_out,                
+        instruction => instruction_ID,
+        write_data => write_data_ID,
+        clk => clk,
+        reg_wE =>  reg_wE_ID,                   
+        write_reg => write_reg_ID,                
         pc_out => pc_EX,
-        alu_val => alu_val,
-        reg_val => reg_val,
-        imm => imm,
-        alu_op => alu_op,
-        rd => rd,
-        rt => rt,
-        alu_src => alu_src,
-        reg_dest => reg_dest,
-        --mem_to_reg_EX => ?,
-        --reg_write_EX =>  ?,         
-        clk => clk
+        alu_val => alu_val_EX,
+        reg_val => reg_val_EX,
+        imm => imm_EX,
+        alu_op => alu_op_EX,
+        rd => rd_EX,
+        rt => rt_EX,
+        reg_dest => reg_dest_EX,
+        reg_write_EX => reg_write_EX,
+        alu_src => alu_src_EX,
+        pc_src =>pc_src_EX,
+        mem_write =>mem_write_EX,
+        mem_to_reg_EX =>mem_to_reg_EX,
+        jr => jr_EX
     );
 
     EXI: EX
     port map (
-        imm         => std_logic_vector(imm),       
-        pc          => std_logic_vector(pc_EX),     -- aus ID
-        alu_val     => std_logic_vector(alu_val),   -- aus ID
-        reg_val     => std_logic_vector(reg_val),   -- aus ID
-        opcode      => std_logic_vector(alu_op),    -- aus ID
-        rt          => std_logic_vector(rt),        -- aus ID
-        rd          => std_logic_vector(rd),        -- aus ID
-        mux_sel     => alu_src,           -- Steuerleitung aus ID
-        write_sel   => reg_dest,          -- Steuerleitung aus ID
-        wE          => write_enable_EX,   -- Steuerleitung
-        rE          => read_enable_EX,    -- Steuerleitung
-        --mem_to_reg_EX => mem_to_reg_EX,   -- Steuerleitung aus ID
-        --reg_write_EX  => reg_write_EX,    -- Steuerleitung aus ID
-        pc_offs     => pc_MEM,            -- Ausgabe
-        out_result  => alu_result,        -- Ausgabe
-        data        => write_data_EX,     
-        write_reg   => write_reg_EX,      
-        wE_out      => write_enable_MEM,  
-        rE_out      => read_enable_MEM  
-        --mem_to_reg_MEM => mem_to_reg_MEM, 
-        --reg_write_MEM  => reg_write_MEM   
-    );
+        imm         => imm_EX,       
+        pc          => pc_EX,     -- aus ID
+        alu_val     => alu_val_EX,   -- aus ID
+        reg_val     => reg_val_EX,   -- aus ID
+        alu_op      => alu_op_EX,    -- aus ID
+        rt          => rt_EX,        -- aus ID
+        rd          => rd_EX,        -- aus ID
+        clk         => clk,
+        reg_dest    => reg_dest_EX,
+        reg_write_EX => reg_write_EX,
+        alu_src => alu_src_EX,
+        pc_src => pc_src_EX,
+        mem_write   => mem_write_EX,           -- Steuerleitung aus ID
+        mem_to_reg_EX   => mem_to_reg_EX,          -- Steuerleitung aus ID
+        jr          => jr_EX,
+        pc_out        => pc_MEM,     
+        out_result          => address_MEM,   -- Steuerleitung
+        data          => write_data_MEM,    -- Steuerleitung
+        write_reg     => write_reg_MEM,            -- Ausgabe
+        mem_write_out  => mem_write_MEM,        -- Ausgabe
+        mem_to_reg_MEM   => mem_to_reg_MEM,      
+        reg_write_MEM      => reg_write_MEM  
+        );
 
     MEMI: MEM
         port map (
             pc_in          => pc_MEM,        -- PC aus EX-Stufe
-            adress_in      => alu_result_MEM, -- Speicheradresse aus ALU-Ergebnis (EX)
+            address_in      => address_MEM, -- Speicheradresse aus ALU-Ergebnis (EX)
             write_data     => write_data_MEM, -- Daten für Speicher (EX-Ergebnis)
             clk            => clk,           -- Takt-Signal
-            writeE         => write_enable_MEM,  -- Speicher-Schreibsignal
-            readE          => read_enable_MEM,   -- Speicher-Lesesignal
+            mem_write         => mem_write_MEM,  -- Speicher-Schreibsignal
             mem_to_reg_in  => mem_to_reg_MEM,    -- Steuersignal für WB-Stufe
             reg_write_in   => reg_write_MEM,     -- Register Write Enable Signal
-            mem_to_reg_MEM => mem_to_reg_WB,     -- Weitergabe an WB
-            reg_write_MEM  => reg_write_WB,      -- Weitergabe an WB
-            read_data      => read_data_WB,      -- Gelesene Daten für WB
-            adress_out     => open,              -- Falls nicht benötigt
-            pc_out         => pc_WB              -- PC für WB
-        );
+            write_reg => write_reg_MEM,
+            read_data_out      => data_val_WB,      -- Gelesene Daten für WB
+            adress_out     => alu_val_WB,              -- Falls nicht benötigt
+            pc_out         => pc_IF,              -- PC für WB
+            mem_to_reg_WB => mem_to_reg_WB,     -- Weitergabe an WB
+            reg_write_WB  => reg_write_WB,      -- Weitergabe an WB
+            write_reg_out => write_reg_WB
+            );
 
     WBI: WB
     port map (
-        data_val       => read_data_WB,   -- Speicherwert aus MEM-Stufe
-        alu_val        => alu_result_WB,  -- ALU-Ergebnis für WB
+        data_val       => data_val_WB,   -- Speicherwert aus MEM-Stufe
+        alu_val        => alu_val_WB,  -- ALU-Ergebnis für WB
         clk            => clk,            -- Takt-Signal
         mem_to_reg_WB  => mem_to_reg_WB,  -- Steuersignal zur Auswahl des WB-Werts
         reg_write_WB   => reg_write_WB,   -- Schreibsignal für Register
         write_reg_in   => write_reg_WB,   -- Zielregister für WB
-        write_reg_out  => write_reg_WB,   -- Zielregister bleibt gleich
-        write_enable_out => write_enable_out, -- Finales Write-Enable-Signal für Register
-        write_data     => write_data_WB   -- Finaler Wert für Register-Write
+        write_reg_out  => write_reg_ID,   -- Zielregister bleibt gleich
+        write_enable_out => reg_wE_ID, -- Finales Write-Enable-Signal für Register
+        write_data     => write_data_ID   -- Finaler Wert für Register-Write
     );
 
-    -- process für IF/ID
-        process (clk)
-            begin
-                if rising_edge(clk) then
-                pc_ID <= pc_IF;
-                instruction_ID <= instruction_IF;
-                end if;
-            end process;
-
-    -- process für ID/EX
-        process (clk)
-    begin
-        if rising_edge(clk) then
-            pc_EX <= std_logic_vector(pc_ID);   -- PC weiterleiten
-            alu_val <= std_logic_vector(alu_val); -- ALU-Wert aus Registerbank
-            reg_val <= std_logic_vector(reg_val); -- Registerwert weiterleiten
-            imm <= std_logic_vector(imm);         -- Immediate-Wert weitergeben
-            alu_op <= std_logic_vector(alu_op);   -- ALU-Opcode
-            rd <= std_logic_vector(rd);           -- Zielregister
-            rt <= std_logic_vector(rt);           -- Quellregister
-            alu_src <= alu_src;         -- Steuerleitung
-            reg_dest <= reg_dest;       -- Steuerleitung
-            write_enable_EX <= write_enable_WB; -- Steuerleitung für Register-Write
-            read_enable_EX <= read_enable_MEM;  -- Speicherlesesteuerung
-            mem_to_reg_EX <= mem_to_reg_EX;
-            reg_write_EX <= reg_write_EX;
-        end if;
-    end process;
-
-    -- process für EX/MEM
-    process (clk)
-    begin
-        if rising_edge(clk) then
-            pc_MEM <= pc_EX;            -- PC weitergeben
-            alu_result_MEM <= alu_result; -- ALU-Ergebnis an Speicher übergeben
-            write_data_MEM <= std_logic_vector(write_data_EX); -- Speicher-Wert
-            write_enable_MEM <= write_enable_EX; -- Schreibsteuerung
-            read_enable_MEM <= read_enable_EX;  -- Lese-Steuerleitung
-            mem_to_reg_MEM <= mem_to_reg_EX;    -- Speicher-zu-Register-Steuerleitung
-            reg_write_MEM <= reg_write_EX;      -- Steuerbit für Register-Write
-        end if;
-    end process;
-
-    -- process für /WBMEM
-    process (clk)
-    begin
-        if rising_edge(clk) then
-            alu_result_WB <= alu_result_MEM; -- ALU-Ergebnis für WB
-            read_data_WB <= read_data_WB;   -- Daten aus Speicher
-            write_reg_WB <= write_reg_EX;   -- Zielregister für WB
-            write_enable_WB <= reg_write_MEM; -- Steuerleitung für Register-Write
-            mem_to_reg_WB <= mem_to_reg_MEM; -- Speicher-zu-Register-Steuerleitung
-        end if;
-    end process;
-     
 end behaviour;
