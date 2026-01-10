@@ -41,16 +41,16 @@ architecture behaviour of Prozessor is
         clk, reg_dest, reg_write_EX, alu_src, pc_src, mem_write, mem_to_reg_EX, jr: in std_logic; -- mux_sel für alu, write_sel für befehls_mux unten bild            
         pc_out, out_result, data: out std_logic_vector(31 downto 0);
         write_reg: out std_logic_vector(4 downto 0);
-        mem_write_out, mem_to_reg_MEM, reg_write_MEM : out std_logic);
+        mem_write_out, mem_to_reg_MEM, reg_write_MEM, pc_src_MEM : out std_logic);
     end component;
 
    component MEM is 
     port (
         pc_in, address_in, write_data : in std_logic_vector(31 downto 0);
-        clk, mem_write, mem_to_reg_in, reg_write_in : in std_logic;
+        clk, mem_write, mem_to_reg_in, reg_write_in, pc_src_in : in std_logic;
         write_reg: in std_logic_vector(4 downto 0);
         read_data_out, adress_out, pc_out: out std_logic_vector(31 downto 0);
-        mem_to_reg_WB, reg_write_WB : out std_logic;
+        mem_to_reg_WB, reg_write_WB, pc_src_IF : out std_logic;
         write_reg_out: out std_logic_vector(4 downto 0)
     );
     end component;
@@ -82,7 +82,7 @@ architecture behaviour of Prozessor is
 
      -- Signale für MEM-Stufe
     signal pc_MEM, address_MEM, write_data_MEM : std_logic_vector(31 downto 0);
-    signal mem_write_MEM, mem_to_reg_MEM, reg_write_MEM : std_logic;
+    signal mem_write_MEM, mem_to_reg_MEM, reg_write_MEM, pc_src_MEM : std_logic;
     signal write_reg_MEM : std_logic_vector(4 downto 0);
     
     -- Signale für WB-Stufe
@@ -148,7 +148,8 @@ architecture behaviour of Prozessor is
         write_reg     => write_reg_MEM,            -- Ausgabe
         mem_write_out  => mem_write_MEM,        -- Ausgabe
         mem_to_reg_MEM   => mem_to_reg_MEM,      
-        reg_write_MEM      => reg_write_MEM  
+        reg_write_MEM      => reg_write_MEM ,
+        pc_src_MEM       => pc_src_MEM 
         );
 
     MEMI: MEM
@@ -160,12 +161,14 @@ architecture behaviour of Prozessor is
             mem_write         => mem_write_MEM,  -- Speicher-Schreibsignal
             mem_to_reg_in  => mem_to_reg_MEM,    -- Steuersignal für WB-Stufe
             reg_write_in   => reg_write_MEM,     -- Register Write Enable Signal
+            pc_src_in       => pc_src_MEM,
             write_reg => write_reg_MEM,
             read_data_out      => data_val_WB,      -- Gelesene Daten für WB
             adress_out     => alu_val_WB,              -- Falls nicht benötigt
             pc_out         => pc_IF,              -- PC für WB
             mem_to_reg_WB => mem_to_reg_WB,     -- Weitergabe an WB
             reg_write_WB  => reg_write_WB,      -- Weitergabe an WB
+            pc_src_IF => pc_src_IF,
             write_reg_out => write_reg_WB
             );
 
@@ -181,5 +184,10 @@ architecture behaviour of Prozessor is
         write_enable_out => reg_wE_ID, -- Finales Write-Enable-Signal für Register
         write_data     => write_data_ID   -- Finaler Wert für Register-Write
     );
+
+    keep_alive : process
+        begin
+            wait;
+        end process;
 
 end behaviour;

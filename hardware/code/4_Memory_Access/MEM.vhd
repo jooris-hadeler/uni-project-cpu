@@ -11,10 +11,10 @@ use work.memPkg.all;
 entity MEM is 
     port (
         pc_in, address_in, write_data : in std_logic_vector(31 downto 0);
-        clk, mem_write, mem_to_reg_in, reg_write_in : in std_logic;
+        clk, mem_write, mem_to_reg_in, reg_write_in, pc_src_in : in std_logic;
         write_reg: in std_logic_vector(4 downto 0);
         read_data_out, adress_out, pc_out: out std_logic_vector(31 downto 0);
-        mem_to_reg_WB, reg_write_WB : out std_logic;
+        mem_to_reg_WB, reg_write_WB, pc_src_IF : out std_logic;
         write_reg_out: out std_logic_vector(4 downto 0)
     );
 end entity MEM;
@@ -46,23 +46,25 @@ architecture behaviour of MEM is
                                      dataWd => 32,
                                      fileID => "memoryram.dat")
                         port map (nWE, address, write_data, read_data, fileIO_in);
+        
                             
+        address <= address_in(15 downto 0);
+        nWE <= NOT mem_write;
+
         mem_seg_process : process (clk) is
         begin
             if rising_edge(clk) then
-                fileIO_in <= load;
-                nWE <= NOT mem_write;
                 adress_out <= address_in;
-                address <= address_in(15 downto 0);
                 pc_out <= pc_in;
                 mem_to_reg_WB <= mem_to_reg_in;
                 reg_write_WB <= reg_write_in;
                 read_data_out <= std_logic_vector(read_data);
                 write_reg_out <= write_reg;
+                pc_src_IF <= pc_src_in;
                 if mem_write = '1' then
                     fileIO_in <= dump;
                 else
-                    fileIO_in <= none;
+                    fileIO_in <= load;
                 end if;
             end if;
         end process mem_seg_process;

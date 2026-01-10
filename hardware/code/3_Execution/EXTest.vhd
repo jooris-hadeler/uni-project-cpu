@@ -19,7 +19,7 @@ architecture testbench of EXTest is
         clk, reg_dest, reg_write_EX, alu_src, pc_src, mem_write, mem_to_reg_EX, jr: in std_logic; -- mux_sel für alu, write_sel für befehls_mux unten bild            
         pc_out, out_result, data: out std_logic_vector(31 downto 0);
         write_reg: out std_logic_vector(4 downto 0);
-        mem_write_out, mem_to_reg_MEM, reg_write_MEM : out std_logic);
+        mem_write_out, mem_to_reg_MEM, reg_write_MEM, pc_src_MEM : out std_logic);
     end component EX;
     
     signal imm_in, pc_in, alu_val_in, reg_val_in: std_logic_vector(31 downto 0);
@@ -27,11 +27,11 @@ architecture testbench of EXTest is
     signal clk_in, reg_dest_in, reg_write_EX_in, alu_src_in, pc_src_in, mem_write_in, mem_to_reg_EX_in, jr_in: std_logic;
     signal pc_out_out, out_result_out, data_out: std_logic_vector(31 downto 0);
     signal write_reg_out: std_logic_vector(4 downto 0); 
-    signal wE_out_out, mem_to_reg_MEM_out, reg_write_MEM_out : std_logic;
+    signal wE_out_out, mem_to_reg_MEM_out, reg_write_MEM_out, pc_src_IF_out : std_logic;
 
 begin
     EXI: EX	port map (imm_in, pc_in, alu_val_in, reg_val_in, alu_op_in, rt_in, rd_in, clk_in, reg_dest_in, reg_write_EX_in, alu_src_in, pc_src_in, mem_write_in, mem_to_reg_EX_in, jr_in,
-        pc_out_out, out_result_out, data_out, write_reg_out, wE_out_out, mem_to_reg_MEM_out, reg_write_MEM_out);
+        pc_out_out, out_result_out, data_out, write_reg_out, wE_out_out, mem_to_reg_MEM_out, reg_write_MEM_out, pc_src_IF_out);
 
     EXPr: process is
     begin

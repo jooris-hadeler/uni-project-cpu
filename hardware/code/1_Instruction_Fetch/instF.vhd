@@ -62,13 +62,13 @@ is component rom is
             if rising_edge(clk) then --check ob Flanke von clk = 0 -> 1
                 if pc_src = '1' then
                     addrin <= pc_in(15 downto 0); --Nutzt die unteren 16 bits als adresse for pc 
-                    result := unsigned(pc_in) + 1;
+                    result := unsigned(pc_in);
                 else
                     addrin <= pc(15 downto 0);
                     result := unsigned(pc) + 1;
                 end if;
+                pc_out <= pc; 
                 pc <= std_logic_vector(result); --increase pc count um 1
-                pc_out <= std_logic_vector(result); --increase pc count um 1
                 instruction <= instruction_mem; --instruction wird auf den aus ROM geladenen Befehl gesetzt
                 
             end if;

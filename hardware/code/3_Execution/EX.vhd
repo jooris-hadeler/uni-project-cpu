@@ -9,7 +9,7 @@ entity EX is
         clk, reg_dest, reg_write_EX, alu_src, pc_src, mem_write, mem_to_reg_EX, jr: in std_logic; -- mux_sel für alu, write_sel für befehls_mux unten bild            
         pc_out, out_result, data: out std_logic_vector(31 downto 0);
         write_reg: out std_logic_vector(4 downto 0);
-        mem_write_out, mem_to_reg_MEM, reg_write_MEM : out std_logic);
+        mem_write_out, mem_to_reg_MEM, reg_write_MEM, pc_src_MEM : out std_logic);
 end entity EX;
 
 architecture behaviour of EX is
@@ -27,44 +27,41 @@ architecture behaviour of EX is
     begin
         aluI: alu	port map (signed(alu_val), mux_val, alu_result, alu_op, zero);
 
-            
+            mux_val <= signed(reg_val) when alu_src = '0' else signed(imm);
             ex_seg_process : process (clk) is
             begin 
                 if rising_edge(clk) then
-                
-                if alu_src = '0' then
-                    mux_val <= signed(reg_val);
-                else
-                    mux_val <= signed(imm);
-                end if;
 
-                if pc_src = '1' then
-                    if zero = '1' then
-                        imm_signed <= signed(imm);
-                        pc_out <= std_logic_vector(signed(pc) + imm_signed); -- adder und shifter (imm -> offset)
+                    if pc_src = '1' then
+                        if zero = '1' then
+                            pc_src_MEM <= '1';
+                        else 
+                            pc_src_MEM <= '0';
+                        end if;
+                    else 
+                        pc_src_MEM <= '0';
                     end if;
-                else 
-                    pc_out <= pc;
-                end if;
 
-                if reg_dest = '1' then
-                    write_reg <= rd;
-                else 
-                    write_reg <= rt;
-                end if;
+                    pc_out <= std_logic_vector(signed(pc) + signed(imm)); -- adder und shifter (imm -> offset)
 
-                if jr = '1' then
-                    pc_out <= alu_val;
-                end if;
+                    if reg_dest = '1' then
+                        write_reg <= rd;
+                    else 
+                        write_reg <= rt;
+                    end if;
 
-                
-                reg_write_MEM <= reg_write_EX;
-                mem_to_reg_MEM <= mem_to_reg_EX;
-                mem_write_out <= mem_write;
-                data <= reg_val;
-                out_result <= std_logic_vector(alu_result); -- ergebnis der alu wird 'ausgegeben'
-                
-            end if; --weitere speicherwerte einfach mit in process integrieren
+                    if jr = '1' then
+                        pc_out <= alu_val;
+                    end if;
+
+                    
+                    reg_write_MEM <= reg_write_EX;
+                    mem_to_reg_MEM <= mem_to_reg_EX;
+                    mem_write_out <= mem_write;
+                    data <= reg_val;
+                    out_result <= std_logic_vector(alu_result); -- ergebnis der alu wird 'ausgegeben'
+                    
+                end if; --weitere speicherwerte einfach mit in process integrieren
         end process ex_seg_process;
 
 end behaviour;

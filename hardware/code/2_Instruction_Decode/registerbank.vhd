@@ -20,7 +20,7 @@ end entity registerbank;
 
 architecture behaviour of registerbank is 
     type regArray is array(0 to 31) of signed(31 downto 0);
-    signal registers : regArray;
+    signal registers : regArray := (0 => (others => '0'), others => (others => '0'));
 begin
       reg_mult : process (selA, selB, registers) is
         begin 
@@ -28,9 +28,9 @@ begin
             dOutB <= registers(to_integer(unsigned(selB)));
     end process reg_mult;
 
-      reg_demult : process (clk, dIn, selD, wE, registers) is
+      reg_demult : process (clk) is
         begin 
-            if rising_edge(clk) AND (wE = '1') then registers(to_integer(unsigned(selD))) <= dIn;
+            if rising_edge(clk) AND (wE = '1') AND selD /= "00000" then registers(to_integer(unsigned(selD))) <= dIn;
         end if;
     end process reg_demult;
     end architecture behaviour;
