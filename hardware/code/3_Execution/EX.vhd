@@ -6,7 +6,7 @@ entity EX is
     port (
         imm, pc, alu_val, reg_val: in std_logic_vector(31 downto 0);
         alu_op, rt, rd: in std_logic_vector(4 downto 0);
-        clk, reg_dest, reg_write_EX, alu_src, pc_src, mem_write, mem_to_reg_EX, jr: in std_logic; -- mux_sel für alu, write_sel für befehls_mux unten bild            
+        clk, reg_dest, reg_write_EX, alu_src, pc_src, mem_write, mem_to_reg_EX, jr, jar: in std_logic; -- mux_sel für alu, write_sel für befehls_mux unten bild            
         pc_out, out_result, data: out std_logic_vector(31 downto 0);
         write_reg: out std_logic_vector(4 downto 0);
         mem_write_out, mem_to_reg_MEM, reg_write_MEM, pc_src_MEM : out std_logic);
@@ -21,7 +21,6 @@ architecture behaviour of EX is
     end component;
 
     signal alu_result, mux_val: signed(31 downto 0);
-    signal imm_signed : signed(31 downto 0);
     signal zero : STD_LOGIC;
 
     begin
@@ -59,9 +58,13 @@ architecture behaviour of EX is
                     mem_to_reg_MEM <= mem_to_reg_EX;
                     mem_write_out <= mem_write;
                     data <= reg_val;
-                    out_result <= std_logic_vector(alu_result); -- ergebnis der alu wird 'ausgegeben'
+                    if jar = '1' then
+                        out_result <= pc; -- ergebnis der alu wird 'ausgegeben'
+                    else
+                        out_result <= std_logic_vector(alu_result); -- ergebnis der alu wird 'ausgegeben'
+                    end if;
                     
-                end if; --weitere speicherwerte einfach mit in process integrieren
+                end if;
         end process ex_seg_process;
 
 end behaviour;

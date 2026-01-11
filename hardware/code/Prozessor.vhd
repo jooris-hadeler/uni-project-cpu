@@ -12,11 +12,10 @@ architecture behaviour of Prozessor is
 
     component instF is -- Schnittstelle des Instruction-Fetch
     port (
-        pc_in : in std_logic_vector(31 downto 0); -- Eingabe des aktuellen PC Counts
-        pc_out: out std_logic_vector(31 downto 0); -- Ausgabe des inkrementierten PC Counts
-        instruction: out std_logic_vector (31 downto 0);-- Die gelesene Instruction aus dem ROM
-        pc_src: in std_logic; -- Steuersignal f�r Sprung
-        clk : in std_logic -- Takt-Signal
+        clk, pc_src : in std_logic := '0'; -- Takt-Signal, Steuersignal f�r Sprung
+        pc_IF : in std_logic_vector(31 downto 0) := "00000000000000000000000000000000"; -- Eingabe des aktuellen PC Counts
+        pc_ID: out std_logic_vector(31 downto 0); -- Ausgabe des inkrementierten PC Counts
+        instruction: out std_logic_vector (31 downto 0) -- Die gelesene Instruction aus dem ROM
     );
     end component;
 
@@ -30,7 +29,7 @@ architecture behaviour of Prozessor is
 
         reg_dest, reg_write_EX, alu_src,
         pc_src, mem_write,
-        mem_to_reg_EX, jr :              out std_logic
+        mem_to_reg_EX, jr, jar :              out std_logic
     );
     end component;
 
@@ -38,7 +37,7 @@ architecture behaviour of Prozessor is
     port (
         imm, pc, alu_val, reg_val: in std_logic_vector(31 downto 0);
         alu_op, rt, rd: in std_logic_vector(4 downto 0);
-        clk, reg_dest, reg_write_EX, alu_src, pc_src, mem_write, mem_to_reg_EX, jr: in std_logic; -- mux_sel für alu, write_sel für befehls_mux unten bild            
+        clk, reg_dest, reg_write_EX, alu_src, pc_src, mem_write, mem_to_reg_EX, jr, jar: in std_logic; -- mux_sel für alu, write_sel für befehls_mux unten bild            
         pc_out, out_result, data: out std_logic_vector(31 downto 0);
         write_reg: out std_logic_vector(4 downto 0);
         mem_write_out, mem_to_reg_MEM, reg_write_MEM, pc_src_MEM : out std_logic);
@@ -78,7 +77,7 @@ architecture behaviour of Prozessor is
     -- signal für EX
     signal imm_EX, pc_EX, alu_val_EX, reg_val_EX : std_logic_vector(31 downto 0); -- EX
     signal alu_op_EX, rt_EX, rd_EX : std_logic_vector(4 downto 0);
-    signal reg_dest_EX, reg_write_EX, alu_src_EX, pc_src_EX, mem_write_EX, mem_to_reg_EX, jr_EX : std_logic;
+    signal reg_dest_EX, reg_write_EX, alu_src_EX, pc_src_EX, mem_write_EX, mem_to_reg_EX, jr_EX, jar_EX : std_logic;
 
      -- Signale für MEM-Stufe
     signal pc_MEM, address_MEM, write_data_MEM : std_logic_vector(31 downto 0);
@@ -94,11 +93,11 @@ architecture behaviour of Prozessor is
 
     instFI: instF 
     port map (
-        pc_in => pc_IF,
-        pc_out => pc_ID,
-        instruction => instruction_ID,
+        clk =>  clk,
         pc_src => pc_src_IF,
-        clk =>  clk
+        pc_IF => pc_IF,
+        pc_ID => pc_ID,
+        instruction => instruction_ID
     );
     
     IDI: ID
@@ -122,7 +121,8 @@ architecture behaviour of Prozessor is
         pc_src =>pc_src_EX,
         mem_write =>mem_write_EX,
         mem_to_reg_EX =>mem_to_reg_EX,
-        jr => jr_EX
+        jr => jr_EX,
+        jar => jar_EX
     );
 
     EXI: EX
@@ -142,6 +142,7 @@ architecture behaviour of Prozessor is
         mem_write   => mem_write_EX,           -- Steuerleitung aus ID
         mem_to_reg_EX   => mem_to_reg_EX,          -- Steuerleitung aus ID
         jr          => jr_EX,
+        jar         => jar_EX,
         pc_out        => pc_MEM,     
         out_result          => address_MEM,   -- Steuerleitung
         data          => write_data_MEM,    -- Steuerleitung

@@ -11,13 +11,12 @@ end instFTest;
 architecture Behavioral of instFTest is
     -- Komponente instfTest instanziieren
     component instF
-        Port (
-            pc_in       : in  std_logic_vector(31 downto 0);
-            pc_out      : out std_logic_vector(31 downto 0);
-            instruction : out std_logic_vector(31 downto 0);
-            pc_src      : in std_logic;
-            clk         : in  std_logic
-        );
+        port (
+        clk, pc_src : in std_logic := '0'; -- Takt-Signal, Steuersignal für Sprung
+        pc_IF : in std_logic_vector(31 downto 0) := "00000000000000000000000000000000"; -- Eingabe des aktuellen PC Counts
+        pc_ID: out std_logic_vector(31 downto 0); -- Ausgabe des inkrementierten PC Counts
+        instruction: out std_logic_vector (31 downto 0) -- Die gelesene Instruction aus dem ROM
+    );
     end component;
 
     -- Signale fÃ¼r die Testbench
@@ -33,9 +32,9 @@ begin
     uut: instF
         port map (
             clk         => clk,
-            pc_in       => pc_in,
-            pc_out      => pc_out,
             pc_src      => pc_src,
+            pc_IF       => pc_in,
+            pc_ID      => pc_out,
             instruction => instruction
         );
 

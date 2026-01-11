@@ -41,6 +41,8 @@ architecture behaviour of MEM is
     signal fileIO_in: fileIoT := none;
     
     begin
+        pc_out <= pc_in;
+        pc_src_IF <= pc_src_in;
 
         ramIOI: ramIO   generic map (addrWd => 16,
                                      dataWd => 32,
@@ -55,12 +57,10 @@ architecture behaviour of MEM is
         begin
             if rising_edge(clk) then
                 adress_out <= address_in;
-                pc_out <= pc_in;
                 mem_to_reg_WB <= mem_to_reg_in;
                 reg_write_WB <= reg_write_in;
                 read_data_out <= std_logic_vector(read_data);
                 write_reg_out <= write_reg;
-                pc_src_IF <= pc_src_in;
                 if mem_write = '1' then
                     fileIO_in <= dump;
                 else

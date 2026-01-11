@@ -5,11 +5,10 @@ use work.memPkg.all;        -- Import des gesamten Packages memPkg
 
 entity instF is -- Schnittstelle des Instruction-Fetch
     port (
-        pc_in : in std_logic_vector(31 downto 0); -- Eingabe des aktuellen PC Counts
-        pc_out: out std_logic_vector(31 downto 0); -- Ausgabe des inkrementierten PC Counts
-        instruction: out std_logic_vector (31 downto 0);-- Die gelesene Instruction aus dem ROM
-        pc_src: in std_logic; -- Steuersignal für Sprung
-        clk : in std_logic -- Takt-Signal
+        clk, pc_src : in std_logic := '0'; -- Takt-Signal, Steuersignal für Sprung
+        pc_IF : in std_logic_vector(31 downto 0) := "00000000000000000000000000000000"; -- Eingabe des aktuellen PC Counts
+        pc_ID: out std_logic_vector(31 downto 0); -- Ausgabe des inkrementierten PC Counts
+        instruction: out std_logic_vector (31 downto 0) -- Die gelesene Instruction aus dem ROM
     );
 end instF;
 
@@ -28,50 +27,45 @@ is component rom is
          );
     end component;
 
-    signal addrin : std_logic_vector(15 downto 0); --Leitung for pc_in zu ROM 
-    signal instruction_mem : std_logic_vector(31 downto 0); --Leitung for ROM zu instruction
+    signal instruction_rom : std_logic_vector(31 downto 0); --Leitung for ROM zu instruction
     signal fileIO  : fileIoT := none;
-    signal pc: std_logic_vector(31 downto 0) := "00000000000000000000000000000000";
+    signal pc : std_logic_vector(31 downto 0) := "00000000000000000000000000000000";
+    signal next_pc : std_logic_vector(31 downto 0);
     
     begin
-        romI: rom   
-            generic map (
-            addrWd => 16, --ROM Initialisierung 
-            dataWd => 32,
-            fileId => "memoryrom.dat"
-            ) 
-             
-            port map (
-                addr => addrin,              -- Adresseingang des ROMs
-                data => instruction_mem,  -- Datenausgang des ROMs
-                fileIO => fileIO
-            );
-        
-        init_mem : process
-        begin
-            fileIO <= load;
-            wait for 5 ns; 
-            fileIO <= none;
-            wait;
-        end process;
 
-        instf_seg_process : process (clk) is
-        variable result : unsigned(31 downto 0);
-        
-        begin
-            if rising_edge(clk) then --check ob Flanke von clk = 0 -> 1
-                if pc_src = '1' then
-                    addrin <= pc_in(15 downto 0); --Nutzt die unteren 16 bits als adresse for pc 
-                    result := unsigned(pc_in);
-                else
-                    addrin <= pc(15 downto 0);
-                    result := unsigned(pc) + 1;
-                end if;
-                pc_out <= pc; 
-                pc <= std_logic_vector(result); --increase pc count um 1
-                instruction <= instruction_mem; --instruction wird auf den aus ROM geladenen Befehl gesetzt
+        next_pc <= pc_IF when pc_src = '1' else STD_LOGIC_VECTOR(unsigned(pc) + 1);
+            
+            
+            romI: rom   
+            generic map (
+                addrWd => 16, --ROM Initialisierung 
+                dataWd => 32,
+                fileId => "memoryrom.dat"
+                ) 
                 
-            end if;
+                port map (
+                    addr => pc(15 downto 0),              -- Adresseingang des ROMs
+                    data => instruction_rom,  -- Datenausgang des ROMs
+                    fileIO => fileIO
+                    );
+                    
+                    init : process
+                begin
+                    fileIO <= load;
+                    wait for 5 ns; 
+                    fileIO <= none;
+                    wait;
+                end process;
+                
+            instf_seg_process : process (clk) is
+                
+            begin
+                if rising_edge(clk) then --check ob Flanke von clk = 0 -> 1
+                    instruction <= instruction_rom; --instruction wird auf den aus ROM geladenen Befehl gesetzt
+                    pc_ID <= STD_LOGIC_VECTOR(signed(pc) + 4);
+                    pc <= next_pc;
+                end if;
         end process instf_seg_process;
 end behaviour;
 

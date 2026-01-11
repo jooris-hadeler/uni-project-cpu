@@ -24,6 +24,7 @@ begin
 
     ProzessorPr: process is
     begin
+        wait for periodC;
         for i in 0 to 100 loop
             clk <= '1'; 
             wait for periodC/2;
