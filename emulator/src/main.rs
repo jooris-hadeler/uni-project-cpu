@@ -1,56 +1,49 @@
-use std::{fs, process::exit};
+use std::{fs, path::PathBuf, process::exit};
 
 use clap::Parser;
-use cli::Cli;
-use cpu::Processor;
-use log::{error, info, LevelFilter};
+use cpu::Cpu;
 
-pub mod cli;
 pub mod cpu;
 pub mod isa;
 
+#[derive(Debug, Parser)]
+pub struct Cli {
+    /// Binary file to run.
+    pub file: PathBuf,
+
+    /// Print the loaded program and quit.
+    #[arg(short, long)]
+    pub print_assembly: bool,
+
+    /// Single step through the program.
+    #[arg(short, long)]
+    pub single_step: bool,
+
+    /// Verbose output.
+    #[arg(short, long)]
+    pub verbose: bool,
+}
+
 fn main() {
-    let Cli {
-        verbose,
-        ram_size,
-        file,
-        program_counter,
-    } = cli::Cli::parse();
+    let cli = Cli::parse();
 
-    simple_logger::SimpleLogger::new()
-        .with_colors(true)
-        .with_level(if verbose {
-            LevelFilter::Debug
-        } else {
-            LevelFilter::Info
-        })
-        .without_timestamps()
-        .init()
-        .unwrap();
-
-    // python: convert = lambda x: [y for y in x.to_bytes(4, 'big')]
-
-    let Ok(rom) = fs::read(&file) else {
-        error!("Failed to load ROM image.");
+    let Ok(rom) = fs::read(&cli.file) else {
+        eprintln!("Error: failed to load ROM image.");
         exit(-1);
     };
 
-    info!("Set RAM size to {} bytes.", ram_size);
-    info!("Successfully loaded ROM image of size {} bytes.", rom.len());
+    let rom: Vec<u32> = rom
+        .chunks_exact(4)
+        .map(|chunk| u32::from_be_bytes(chunk.try_into().unwrap()))
+        .collect();
 
-    let mut index = 0;
-    let mut emulator = Processor::new(rom, ram_size, program_counter);
+    let mut cpu = Cpu::new(rom);
 
-    while !emulator.should_halt {
-        if let Err(err) = emulator.tick() {
-            error!("{err}");
-            break;
-        };
-
-        index += 1;
+    if cli.print_assembly {
+        cpu.print_assembly();
+        exit(0);
     }
 
-    info!("Emulator ran for {} cycles, before halting.", index);
-
-    println!("MEM[0] = {}", emulator.ram[0]);
+    cpu.run(cli.single_step, cli.verbose);
+    cpu.dump();
 }

@@ -1,420 +1,341 @@
-use std::{fmt::Debug, u32};
+use std::io::stdin;
 
-use crate::isa::{Function, Instruction, IsaError, OpCode, Register};
-use log::{debug, trace};
-use thiserror::Error;
+use termion::input::TermRead;
 
-#[derive(Debug, Error, Clone, Copy, PartialEq, Eq)]
-pub enum ExecutionError {
-    #[error("Attempted to read from / write to RAM, but address {0:x} is out of bounds.")]
-    RamOutOfBounds(u32),
+use crate::isa::{self, parse_instruction};
 
-    #[error("Attempted ro read from ROM, but address {0:x} is out of bounds.")]
-    RomOutOfBounds(u32),
-
-    #[error("Attempted to write value to $0 which is forbidden.")]
-    InvalidRegisterWrite,
-
-    #[error("Invalid Instruction found in ROM image: {0}")]
-    InvalidInstruction(#[from] IsaError),
+#[derive(Default, Clone)]
+pub struct IfId {
+    pub empty: bool,
+    pub inst: u32,
+    pub next_pc: u32,
 }
 
-#[derive(Clone, Copy)]
-struct IfId {
-    instruction_word: u32,
-    next_program_counter: u32,
+#[derive(Default, Clone)]
+pub struct IdEx {
+    pub empty: bool,
+    pub op: u32,
+    pub val1: u32,
+    pub val2: u32,
+    pub imm: u32,
+    pub rd: u8,
+    pub funct: u32,
 }
 
-impl Debug for IfId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self {
-            instruction_word,
-            next_program_counter,
-        } = self;
-
-        write!(f, "npc={next_program_counter}, iw={instruction_word}")
-    }
+#[derive(Default, Clone)]
+pub struct ExMem {
+    pub empty: bool,
+    pub alu_result: u32,
+    pub val2: u32, // For stores
+    pub rd: u8,
+    pub op: u32,
 }
 
-#[derive(Clone, Copy)]
-struct IdEx {
-    next_program_counter: u32,
-    op: OpCode,
-    funct: Function,
-    vs: u32,
-    vt: u32,
-    rd: Register,
-    imm_addr: u32,
+#[derive(Default, Clone)]
+pub struct MemWb {
+    pub empty: bool,
+    pub alu_result: u32,
+    pub mem_data: u32,
+    pub rd: u8,
+    pub op: u32,
 }
 
-impl Debug for IdEx {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self {
-            next_program_counter,
-            op,
-            funct,
-            vs,
-            vt,
-            rd,
-            imm_addr,
-        } = self;
+pub struct Cpu {
+    pub regs: [u32; 32],
+    pub pc: u32,
+    pub rom: Vec<u32>,
+    pub memory: Vec<u32>,
 
-        write!(f, "npc={next_program_counter}, op={op:?}, funct={funct:?}, vs={vs}, vt={vt}, rd={rd:?}, imm_addr={imm_addr}")
-    }
+    // Pipeline Registers
+    pub if_id: IfId,
+    pub id_ex: IdEx,
+    pub ex_mem: ExMem,
+    pub mem_wb: MemWb,
+
+    pub halted: bool,
+    pub cycle_count: u64,
 }
 
-#[derive(Clone, Copy)]
-struct ExMem {
-    next_program_counter: u32,
-    op: OpCode,
-    vd: u32,
-    vt: u32,
-    rd: Register,
-    addr: u32,
-}
+impl Cpu {
+    pub fn new(rom: Vec<u32>) -> Self {
+        const RAM_SIZE: usize = 1024 * 8;
 
-impl Debug for ExMem {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self {
-            next_program_counter,
-            op,
-            vd,
-            vt,
-            rd,
-            addr,
-        } = self;
-
-        write!(
-            f,
-            "npc={next_program_counter}, op={op:?}, vd={vd}, vt={vt}, rd={rd:?}, addr={addr}"
-        )
-    }
-}
-
-#[derive(Clone, Copy)]
-struct MemWb {
-    reg: Register,
-    value: u32,
-}
-
-impl Debug for MemWb {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self { reg, value } = self;
-
-        write!(f, "reg={reg:?}, value={value}")
-    }
-}
-
-pub struct Processor {
-    pub rom: Vec<u8>,
-    pub ram: Vec<u8>,
-    pub program_counter: u32,
-    pub registers: [u32; 32],
-    pub should_halt: bool,
-
-    stage_registers: (Option<IfId>, Option<IdEx>, Option<ExMem>, Option<MemWb>),
-}
-
-impl Processor {
-    pub fn new(rom: Vec<u8>, ram_size: u32, program_counter: u32) -> Self {
-        Self {
+        let mut cpu = Self {
+            regs: [0; 32],
+            pc: 0,
             rom,
-            ram: vec![0; ram_size as usize],
-            program_counter,
-            registers: [0; 32],
-            stage_registers: Default::default(),
-            should_halt: false,
+            memory: vec![0; RAM_SIZE],
+            if_id: IfId {
+                empty: true,
+                ..Default::default()
+            },
+            id_ex: IdEx {
+                empty: true,
+                ..Default::default()
+            },
+            ex_mem: ExMem {
+                empty: true,
+                ..Default::default()
+            },
+            mem_wb: MemWb {
+                empty: true,
+                ..Default::default()
+            },
+
+            halted: false,
+            cycle_count: 0,
+        };
+
+        cpu.regs[31] = (RAM_SIZE - 1) as u32;
+
+        cpu
+    }
+
+    pub fn print_assembly(&self) {
+        println!("Address   Instruction");
+        for (addr, word) in self.rom.iter().copied().enumerate() {
+            let instr = parse_instruction(word);
+            println!("{addr:>06X}    {instr}");
         }
     }
 
-    fn store_reg(&mut self, register: Register, value: u32) -> Result<(), ExecutionError> {
-        trace!("store_reg(register = {register:?}, value = {value})");
-        if register == Register::RZero {
-            return Err(ExecutionError::InvalidRegisterWrite);
+    pub fn dump(&self) {
+        println!(" === REGISTER DUMP === ");
+
+        for id in 0..32 {
+            if id != 0 && id % 8 == 0 {
+                println!();
+            }
+
+            print!("${id:0>2}={: <10}", self.regs[id]);
         }
 
-        self.registers[register.index()] = value;
-        Ok(())
+        println!();
     }
 
-    fn load_reg(&self, register: Register) -> u32 {
-        trace!("load_reg(register = {register:?})");
-        let value = self.registers[register.index()];
-        value
+    pub fn run(&mut self, single_step: bool, verbose: bool) {
+        println!("Starting execution...");
+
+        while !self.halted {
+            self.step();
+            self.cycle_count += 1;
+
+            if verbose {
+                let inst = isa::parse_instruction(self.if_id.inst);
+
+                println!("{inst}");
+            }
+
+            if single_step {
+                stdin().events().next();
+            } else if self.cycle_count > 100_000 {
+                println!("Error: Maximum cycle count exceeded.");
+                break;
+            }
+        }
+
+        println!("CPU Halted. Total cycles: {}", self.cycle_count);
     }
 
-    fn read_rom(&self, address: u32) -> Result<u8, ExecutionError> {
-        trace!("read_rom(address = {address})");
-        self.rom
-            .get(address as usize)
-            .copied()
-            .ok_or(ExecutionError::RomOutOfBounds(address))
+    pub fn step(&mut self) {
+        if self.mem_wb.op == isa::OP_HALT {
+            self.halted = true;
+            return;
+        }
+
+        self.write_back();
+        self.memory_access();
+        self.execute();
+        self.decode();
+        self.fetch();
     }
 
-    fn read_ram(&self, address: u32) -> Result<u8, ExecutionError> {
-        trace!("read_ram(address = {address})");
-
-        self.ram
-            .get(address as usize)
-            .copied()
-            .ok_or(ExecutionError::RamOutOfBounds(address))
-    }
-
-    fn write_ram(&mut self, address: u32, value: u8) -> Result<(), ExecutionError> {
-        trace!("write_ram(address = {address}, value = {value})");
-
-        let cell = self
-            .ram
-            .get_mut(address as usize)
-            .ok_or(ExecutionError::RamOutOfBounds(address))?;
-
-        *cell = value;
-
-        Ok(())
-    }
-
-    pub fn tick(&mut self) -> Result<(), ExecutionError> {
-        debug!("BEGIN TICK");
-
-        let (ifid, idex, exmem, memwb) = self.stage_registers;
-        debug!("fetch     <- {}", self.program_counter);
-        debug!("decode    <- {ifid:?}");
-        debug!("execute   <- {idex:?}");
-        debug!("memory    <- {exmem:?}");
-        debug!("writeback <- {memwb:?}");
-
-        let new_ifid = self.fetch()?;
-        let new_idex = self.decode(ifid)?;
-        let new_exmem = self.execute(idex)?;
-        let new_memwb = self.memory(exmem)?;
-        self.write_back(memwb)?;
-
-        debug!("fetch     -> {new_ifid:?}");
-        debug!("decode    -> {new_idex:?}");
-        debug!("execute   -> {new_exmem:?}");
-        debug!("memory    -> {new_memwb:?}");
-        debug!("writeback -> None");
-        self.stage_registers = (new_ifid, new_idex, new_exmem, new_memwb);
-        debug!("END TICK");
-
-        Ok(())
-    }
-
-    fn fetch(&mut self) -> Result<Option<IfId>, ExecutionError> {
-        let instruction_word = u32::from_be_bytes([
-            self.read_rom(self.program_counter + 0)?,
-            self.read_rom(self.program_counter + 1)?,
-            self.read_rom(self.program_counter + 2)?,
-            self.read_rom(self.program_counter + 3)?,
-        ]);
-
-        let next_program_counter = self.program_counter + 4;
-        self.program_counter = next_program_counter;
-
-        let ifid = Some(IfId {
-            instruction_word,
-            next_program_counter,
-        });
-
-        Ok(ifid)
-    }
-
-    fn decode(&mut self, ifid: Option<IfId>) -> Result<Option<IdEx>, ExecutionError> {
-        let Some(IfId {
-            instruction_word,
-            next_program_counter,
-        }) = ifid
-        else {
-            return Ok(None);
+    fn fetch(&mut self) {
+        self.if_id = IfId {
+            empty: false,
+            inst: self
+                .rom
+                .get(self.pc as usize)
+                .copied()
+                .unwrap_or(isa::OP_HALT << 26),
+            next_pc: self.pc + 1,
         };
 
-        let instruction = Instruction::try_from(instruction_word)?;
-
-        Ok(Some(match instruction {
-            Instruction::R(instr) => IdEx {
-                next_program_counter,
-                op: instr.op,
-                funct: instr.funct,
-                vs: self.load_reg(instr.rs),
-                vt: self.load_reg(instr.rt),
-                rd: instr.rd,
-                imm_addr: 0,
-            },
-            Instruction::I(instr) => IdEx {
-                next_program_counter,
-                op: instr.op,
-                funct: Function::Add,
-                vs: self.load_reg(instr.rs),
-                vt: self.load_reg(instr.rt),
-                rd: instr.rt,
-                imm_addr: instr.imm as u32,
-            },
-            Instruction::J(instr) => IdEx {
-                next_program_counter,
-                op: instr.op,
-                funct: Function::Add,
-                vs: 0,
-                vt: 0,
-                rd: Register::RZero,
-                imm_addr: instr.addr,
-            },
-        }))
+        self.pc += 1;
     }
 
-    fn execute(&mut self, idex: Option<IdEx>) -> Result<Option<ExMem>, ExecutionError> {
-        let Some(IdEx {
-            next_program_counter,
-            op,
-            funct,
-            vs,
-            vt,
-            rd,
-            imm_addr,
-        }) = idex
-        else {
-            return Ok(None);
-        };
+    fn decode(&mut self) {
+        if self.if_id.empty {
+            return;
+        }
 
-        Ok(match op {
-            OpCode::ArithmeticLogic => {
-                let vd = match funct {
-                    Function::Add => vs.wrapping_add(vt),
-                    Function::Sub => vs.wrapping_sub(vt),
-                    Function::And => vs & vt,
-                    Function::Or => vs | vt,
-                    Function::Xor => vs ^ vt,
-                    Function::Shl => vs << vt,
-                    Function::Sal => ((vs as i32) << vt) as u32,
-                    Function::Shr => vs >> vt,
-                    Function::Sar => ((vs as i32) >> vt) as u32,
-                    Function::Not => !vs,
-                    Function::LtS => ((vs as i32) < (vt as i32)) as u32,
-                    Function::GtS => ((vs as i32) > (vt as i32)) as u32,
-                    Function::LtU => (vs < vt) as u32,
-                    Function::GtU => (vs > vt) as u32,
-                    Function::Eq => (vs == vt) as u32,
-                    Function::Ne => (vs != vt) as u32,
+        self.id_ex = match isa::parse_instruction(self.if_id.inst) {
+            isa::Instruction::R {
+                op,
+                rs,
+                rt,
+                rd,
+                funct,
+            } => IdEx {
+                empty: false,
+                op,
+                val1: self.regs[rs as usize],
+                val2: self.regs[rt as usize],
+                imm: 0,
+                rd,
+                funct,
+            },
+            isa::Instruction::I { op, rs, rt, imm } => IdEx {
+                empty: false,
+                op,
+                val1: self.regs[rs as usize],
+                val2: self.regs[rt as usize],
+                imm,
+                rd: rt,
+                funct: 0,
+            },
+            isa::Instruction::J { op, addr } => IdEx {
+                empty: false,
+                op,
+                val1: 0,
+                val2: 0,
+                imm: addr,
+                rd: 0,
+                funct: 0,
+            },
+        }
+    }
+
+    fn execute(&mut self) {
+        if self.id_ex.empty {
+            return;
+        }
+
+        let mut result = 0;
+        let mut target_pc = 0;
+        let mut jump_taken = false;
+
+        match self.id_ex.op {
+            isa::OP_ARITH => {
+                result = match self.id_ex.funct {
+                    isa::ARITH_ADD => self.id_ex.val1.wrapping_add(self.id_ex.val2),
+                    isa::ARITH_SUB => self.id_ex.val1.wrapping_sub(self.id_ex.val2),
+                    isa::ARITH_AND => self.id_ex.val1 & self.id_ex.val2,
+                    isa::ARITH_OR => self.id_ex.val1 | self.id_ex.val2,
+                    isa::ARITH_XOR => self.id_ex.val1 ^ self.id_ex.val2,
+                    isa::ARITH_NOT => !self.id_ex.val1,
+
+                    isa::ARITH_LTS => ((self.id_ex.val1 as i32) < (self.id_ex.val2 as i32)) as u32,
+                    isa::ARITH_LTU => (self.id_ex.val1 < self.id_ex.val2) as u32,
+                    isa::ARITH_GTS => ((self.id_ex.val1 as i32) > (self.id_ex.val2 as i32)) as u32,
+                    isa::ARITH_GTU => (self.id_ex.val1 > self.id_ex.val2) as u32,
+                    isa::ARITH_EQ => (self.id_ex.val1 == self.id_ex.val2) as u32,
+                    isa::ARITH_NE => (self.id_ex.val1 != self.id_ex.val2) as u32,
+                    _ => 0,
                 };
-
-                Some(ExMem {
-                    next_program_counter,
-                    op,
-                    vd,
-                    vt: 0,
-                    rd,
-                    addr: 0,
-                })
             }
-            OpCode::LoadHigh => Some(ExMem {
-                next_program_counter,
-                op,
-                vd: (vt & 0xFFFF) | (imm_addr & 0xFFFF) << 16,
-                vt: 0,
-                rd,
-                addr: 0,
-            }),
-            OpCode::LoadLow => Some(ExMem {
-                next_program_counter,
-                op,
-                vd: (vt & 0xFFFF0000) | (imm_addr & 0xFFFF),
-                vt: 0,
-                rd,
-                addr: 0,
-            }),
-            OpCode::LoadByte | OpCode::LoadByteUnsigned => Some(ExMem {
-                next_program_counter,
-                op,
-                vd: vs,
-                vt: 0,
-                rd,
-                addr: imm_addr,
-            }),
-            OpCode::StoreByte => Some(ExMem {
-                next_program_counter,
-                op,
-                vd: vs,
-                vt,
-                rd,
-                addr: imm_addr,
-            }),
-
-            OpCode::Halt => {
-                self.should_halt = true;
-
-                Some(ExMem {
-                    next_program_counter,
-                    op,
-                    vd: 0,
-                    vt: 0,
-                    rd: Register::R10,
-                    addr: 0,
-                })
+            isa::OP_SHI => {
+                result = self.id_ex.val1 | (self.id_ex.imm << 16);
             }
+            isa::OP_SLO => {
+                result = self.id_ex.val1 | (self.id_ex.imm & 0xFFFF);
+            }
+            isa::OP_LOAD => {
+                result = self.id_ex.val1;
+            }
+            isa::OP_STORE => {
+                result = self.id_ex.val2;
+            }
+            isa::OP_JUMP_IMM => {
+                target_pc = self.id_ex.imm;
+                jump_taken = true;
+            }
+            isa::OP_JUMP_REG => {
+                target_pc = self.id_ex.val1;
+                jump_taken = true;
+            }
+            isa::OP_BRANCH => {
+                if self.id_ex.val1 & 1 != 0 {
+                    target_pc = self.id_ex.imm;
+                    jump_taken = true;
+                }
+            }
+            isa::OP_NOP | isa::OP_HALT => {}
+            op => unimplemented!("opcode 0x{op:X}"),
+        }
 
-            OpCode::Nop => None,
+        if jump_taken {
+            self.pc = target_pc;
+            self.flush_pipeline();
+        }
 
-            _ => unimplemented!(),
-        })
+        self.ex_mem = ExMem {
+            empty: false,
+            alu_result: result,
+            val2: self.id_ex.val2,
+            rd: self.id_ex.rd,
+            op: self.id_ex.op,
+        };
     }
 
-    fn memory(&mut self, exmem: Option<ExMem>) -> Result<Option<MemWb>, ExecutionError> {
-        let Some(ExMem {
-            op,
-            vd,
-            vt,
-            rd,
-            addr,
-            ..
-        }) = exmem
-        else {
-            return Ok(None);
+    fn memory_access(&mut self) {
+        if self.ex_mem.empty {
+            return;
+        }
+
+        let mut mem_data = 0;
+        let addr = self.ex_mem.alu_result as usize;
+
+        if self.ex_mem.op == isa::OP_LOAD {
+            mem_data = self.memory[addr];
+        } else if self.ex_mem.op == isa::OP_STORE {
+            self.memory[addr] = self.ex_mem.val2;
+        }
+
+        self.mem_wb = MemWb {
+            empty: false,
+            alu_result: self.ex_mem.alu_result,
+            mem_data,
+            rd: self.ex_mem.rd,
+            op: self.ex_mem.op,
         };
-
-        // Manipulate Program counter here
-        let offset_addr = (addr as u16) as i32;
-
-        Ok(match op {
-            OpCode::ArithmeticLogic | OpCode::LoadHigh | OpCode::LoadLow => {
-                Some(MemWb { reg: rd, value: vd })
-            }
-            OpCode::LoadByte => {
-                let addr = vd.wrapping_add_signed(offset_addr);
-                let byte = self.read_ram(addr)? as i8;
-
-                Some(MemWb {
-                    reg: rd,
-                    value: (byte as i32) as u32,
-                })
-            }
-            OpCode::LoadByteUnsigned => {
-                let addr = vd.wrapping_add_signed(offset_addr);
-                let byte = self.read_ram(addr)?;
-
-                Some(MemWb {
-                    reg: rd,
-                    value: byte as u32,
-                })
-            }
-            OpCode::StoreByte => {
-                let addr = vt.wrapping_add_signed(offset_addr);
-                let value = (vd & 0xFF) as u8;
-
-                self.write_ram(addr, value)?;
-
-                None
-            }
-
-            _ => unimplemented!(),
-        })
     }
 
-    fn write_back(&mut self, memwb: Option<MemWb>) -> Result<(), ExecutionError> {
-        let Some(MemWb { reg, value }) = memwb else {
-            return Ok(());
+    fn write_back(&mut self) {
+        if self.mem_wb.empty {
+            return;
+        }
+
+        // Only write if the destination register is not R0
+        // and if the operation is one that actually writes to a register.
+        if self.mem_wb.rd != 0 {
+            match self.mem_wb.op {
+                isa::OP_ARITH | isa::OP_SHI | isa::OP_SLO | isa::OP_JUMP_IMM | isa::OP_JUMP_REG => {
+                    // Arithmetic and Jump-and-Link style ops write the ALU result
+                    self.regs[self.mem_wb.rd as usize] = self.mem_wb.alu_result;
+                }
+                isa::OP_LOAD => {
+                    // Load ops write the data fetched from memory
+                    self.regs[self.mem_wb.rd as usize] = self.mem_wb.mem_data;
+                }
+                _ => {
+                    // OP_STORE, OP_BRANCH, OP_HALT, and OP_NOP do not write to registers
+                }
+            }
+        }
+    }
+
+    fn flush_pipeline(&mut self) {
+        // Clear the IF/ID and ID/EX latches
+        // This effectively inserts NOPs (bubbles) into the pipeline
+        self.if_id = IfId {
+            empty: true,
+            ..Default::default()
         };
 
-        self.store_reg(reg, value)?;
-
-        Ok(())
+        self.id_ex = IdEx {
+            empty: true,
+            ..Default::default()
+        };
     }
 }
