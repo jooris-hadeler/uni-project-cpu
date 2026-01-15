@@ -1,14 +1,12 @@
 [package]
-name = "proj-assembler"
+name = "uni-asm"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-clap = { version = "4.5.49", features = ["derive"] }
-dashmap = "6.1.0"
-lalrpop-util = "0.22.2"
-logos = "0.15.1"
-once_cell = "1.21.3"
+clap = { version = "4.5.54", features = ["derive"] }
+lalrpop-util = { version = "0.20", features = ["lexer"] }
+regex = "1"
 
 [build-dependencies]
-lalrpop = "0.22.2"
+lalrpop = "0.20"

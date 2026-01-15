@@ -1,0 +1,149 @@
+use crate::ast::*;
+
+use std::str::FromStr;
+
+grammar;
+
+// Skip whitespace and line comments
+match {
+    r"\s*" => { },
+    r"--[^\n\r]*[\n\r]*" => { },
+    _
+}
+
+pub Program: Vec<Item> = {
+    <items:Item*> => items,
+};
+
+pub Item: Item = {
+    <Instruction> => Item::Instruction(<>),
+    <Label> => Item::Label(<>),
+};
+
+pub Instruction: Instruction = {
+    <ArithInstruction> => <>,
+    <SimpleInstruction> => <>,
+    <ImmInstruction> => <>,
+    <MemInstruction> => <>,
+    <JumpInstruction> => <>,
+    <PseudoInstruction> => <>,
+};
+
+ArithInstruction: Instruction = {
+    <op:ArithOp> <dst:Register> "," <src1:Register> "," <src2:Register> => {
+        Instruction::Arith { op, dst, src1, src2 }
+    },
+
+    "not" <dst:Register> "," <src1: Register> => {
+        Instruction::Arith { op: ArithOp::Not, dst, src1, src2: 0 }
+    },
+};
+
+ArithOp: ArithOp = {
+    "add" => ArithOp::Add,
+    "sub" => ArithOp::Sub,
+    "and" => ArithOp::And,
+    "or" => ArithOp::Or,
+    "xor" => ArithOp::Xor,
+    "lts" => ArithOp::Lts,
+    "ltu" => ArithOp::Ltu,
+    "gts" => ArithOp::Gts,
+    "gtu" => ArithOp::Gtu,
+    "eq" => ArithOp::Eq,
+    "ne" => ArithOp::Ne,
+};
+
+SimpleInstruction: Instruction = {
+    "halt" => Instruction::Halt,
+    "nop" => Instruction::Nop,
+};
+
+MemInstruction: Instruction = {
+    "load" <dst:Register> "," <src:Register> => {
+        Instruction::Load { dst, src }
+    },
+    "store" <dst:Register> "," <src:Register> => {
+        Instruction::Store { dst, src }
+    },
+};
+
+ImmInstruction: Instruction = {
+    "shi" <dst:Register> "," <imm:Imm16> => {
+        Instruction::Shi { dst, imm }
+    },
+    "slo" <dst:Register> "," <imm:Imm16> => {
+        Instruction::Slo { dst, imm }
+    },
+};
+
+JumpInstruction: Instruction = {
+    "jmp" <s:r"[a-zA-Z_\.][a-zA-Z0-9_\.]*"> => {
+        Instruction::JumpLabel { label: s.to_string() }
+    },
+    "jmp" <target:Register> => {
+        Instruction::JumpRegister { target }
+    },
+    "br" <cond:Register> "," <s:r"[a-zA-Z_\.][a-zA-Z0-9_\.]*"> => {
+        Instruction::Branch { cond, label: s.to_string() }
+    },
+};
+
+PseudoInstruction: Instruction = {
+    "mov" <dst:Register> "," <imm:Imm32> => {
+        Instruction::Mov { dst, imm }
+    },
+    "copy" <dst:Register> "," <src:Register> => {
+        Instruction::Copy { dst, src }
+    },
+    "push" <src:Register> => {
+        Instruction::Push { src }
+    },
+    "pop" <dst:Register> => {
+        Instruction::Pop { dst }
+    },
+    "call" <s:r"[a-zA-Z_\.][a-zA-Z0-9_\.]*"> => {
+        Instruction::Call { label: s.to_string() }
+    },
+    "ret" => {
+        Instruction::Ret
+    }
+};
+
+Register: u8 = {
+    <s:r"\$([0-9]+)"> =>? {
+        let num_str = &s[1..]; // skip the '$'
+        let val = u8::from_str(num_str)
+            .map_err(|_| lalrpop_util::ParseError::User {
+                error: "Invalid register number"
+            })?;
+        if val > 31 {
+            Err(lalrpop_util::ParseError::User {
+                error: "Register number must be between 0 and 31"
+            })
+        } else {
+            Ok(val)
+        }
+    },
+};
+
+Imm32: u32 = {
+    <s:r"[0-9]+"> =>? {
+        u32::from_str(s)
+            .map_err(|_| lalrpop_util::ParseError::User {
+                error: "Invalid 32-bit immediate value"
+            })
+    },
+};
+
+Imm16: u16 = {
+    <s:r"[0-9]+"> =>? {
+        u16::from_str(s)
+            .map_err(|_| lalrpop_util::ParseError::User {
+                error: "Invalid 16-bit immediate value"
+            })
+    },
+};
+
+Label: String = {
+    <s:r"[a-zA-Z_\.][a-zA-Z0-9_\.]*"> ":" => s.to_string(),
+};

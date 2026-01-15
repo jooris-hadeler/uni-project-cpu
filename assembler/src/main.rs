@@ -1,125 +1,138 @@
-use std::{fs, path::PathBuf, process::exit};
+mod asm;
+mod ast;
 
-use clap::Parser;
-
-use crate::{
-    lexer::Token,
-    util::{intern, resolve},
+use std::{
+    fs::{self, File},
+    io::{self, Write},
+    path::PathBuf,
+    process::exit,
 };
 
-pub mod expand;
-pub mod lexer;
-pub mod parser;
-pub mod util;
+use clap::Parser;
+use lalrpop_util::lalrpop_mod;
+lalrpop_mod!(pub grammar);
 
-#[derive(clap::Parser)]
-#[clap(version, about)]
-pub struct Cli {
-    /// File we want to assemble.
-    pub file: PathBuf,
+#[derive(Debug, clap::Parser)]
+struct CLI {
+    /// Assembly file to process.
+    input: PathBuf,
 
-    /// Path of the output file.
+    /// Output file to write bytecode to.
     #[arg(short, long, default_value = "a.out")]
-    pub output: PathBuf,
+    output: PathBuf,
 
-    /// Only run the lexer and dump the tokens.
+    /// Insert 4 nop instructions after every real instruction.
     #[arg(short, long)]
-    pub lex: bool,
-
-    /// Only run the lexer and parser then dump the AST.
-    #[arg(short, long)]
-    pub parse: bool,
-
-    /// Onlz run the lexer, parser and expander then dump the expanded AST.
-    #[arg(short, long)]
-    pub expand: bool,
+    insert_nops: bool,
 }
 
 fn main() {
-    let cli = Cli::parse();
+    let cli = CLI::parse();
 
-    let content = match fs::read_to_string(&cli.file) {
-        Ok(content) => content,
+    let input = match fs::read_to_string(&cli.input) {
+        Ok(input) => input,
         Err(err) => {
             eprintln!(
-                "Error: failed to read file {} ({:?})",
-                cli.file.display(),
+                "Error: failed to read input file `{}` ({:?})",
+                cli.input.display(),
                 err.kind()
             );
-            exit(1);
+            exit(-1);
         }
     };
 
-    let tokens = match lexer::lex(&content) {
-        Ok(tokens) => tokens,
-        Err(errors) => {
-            eprintln!("Error: an error occured during lexing");
+    let parser = grammar::ProgramParser::new();
 
-            for (s, err, e) in errors {
-                eprintln!("{s}..{e} => {err:?}");
+    let program = match parser.parse(&input) {
+        Ok(program) => program,
+        Err(err) => {
+            eprint!("Error:");
+
+            match err {
+                lalrpop_util::ParseError::InvalidToken { location } => {
+                    eprintln!("encountered invalid token at {location}")
+                }
+                lalrpop_util::ParseError::UnrecognizedEof { location, expected } => {
+                    eprint!("unexpected end of file at {location}, expected one of: ");
+
+                    let mut first = true;
+                    for item in expected {
+                        if !first {
+                            eprint!(", ");
+                        } else {
+                            first = false;
+                        }
+
+                        eprint!("`{item}`");
+                    }
+
+                    eprintln!("instead.");
+                }
+                lalrpop_util::ParseError::UnrecognizedToken {
+                    token: (s, tok, e),
+                    expected,
+                } => {
+                    eprint!("unexpected token at {s}-{e}, expected one of: ");
+
+                    let mut first = true;
+                    for item in expected {
+                        if !first {
+                            eprint!(", ");
+                        } else {
+                            first = false;
+                        }
+
+                        eprint!("`{item}`");
+                    }
+
+                    eprintln!("found `{tok}` instead.");
+                }
+                lalrpop_util::ParseError::ExtraToken { token: (s, tok, e) } => {
+                    eprintln!("unexpected extra token `{tok}` at {s}-{e}.");
+                }
+                lalrpop_util::ParseError::User { error } => eprintln!("{error}"),
             }
 
-            exit(2);
+            exit(-1);
         }
     };
 
-    // Dump tokens and exit.
-    if cli.lex {
-        dump_tokens(tokens);
-        exit(0);
-    }
+    let code = match asm::assemble(&program, cli.insert_nops) {
+        Ok(code) => code,
+        Err(e) => {
+            eprint!("Error assembling:");
 
-    let program = match parser::parse(tokens) {
-        Ok(program) => program,
+            match e {
+                asm::AssemblerError::UndefinedLabel(label) => {
+                    eprintln!("undefined label `{label}` referenced")
+                }
+                asm::AssemblerError::AddressOutOfBounds26(addr) => {
+                    eprintln!("address 0x{addr:X} does not fit in 26 bits")
+                }
+                asm::AssemblerError::AddressOutOfBounds16(addr) => {
+                    eprintln!("address 0x{addr:X} does not fit in 16 bits")
+                }
+            }
+            exit(-1);
+        }
+    };
+
+    match write_to_file(&cli.output, &code) {
+        Ok(_) => eprintln!("Done! Assembled successfully."),
         Err(err) => {
-            eprintln!("Error: an error occured during parsing");
-            eprintln!("{err:?}");
-            exit(3);
+            eprintln!(
+                "Error: failed to write output file `{}` ({:?})",
+                cli.input.display(),
+                err.kind()
+            );
+            exit(-1);
         }
-    };
-
-    // Dump the AST.
-    if cli.parse {
-        println!("{program:#?}");
-        exit(0);
-    }
-
-    let self_name = intern(cli.file.display().to_string());
-    let expanded = match expand::expand(program, self_name) {
-        Ok(program) => program,
-        Err(err) => {
-            eprintln!("Error: an error occured during expanding");
-            eprintln!("{err:?}");
-            exit(4);
-        }
-    };
-
-    // Dump the expanded AST.
-    if cli.expand {
-        println!("{expanded:#?}");
-        exit(0);
     }
 }
 
-fn dump_tokens(tokens: Vec<(usize, Token, usize)>) {
-    for (start, token, end) in tokens {
-        print!("{start}..{end} => ");
+fn write_to_file(path: &PathBuf, buffer: &[u8]) -> io::Result<()> {
+    let mut file = File::create(path)?;
 
-        match token {
-            Token::Identifier(id) => println!("Identifier {:?}", resolve(id)),
-            Token::Register(reg) => println!("Register {:?}", reg),
-            Token::Parameter(idx) => println!("Parameter {}", idx),
-            Token::Number(num) => println!("Number {}", num),
-            Token::String(id) => println!("String {:?}", resolve(id)),
-            Token::KwDefine => println!("KwDefine"),
-            Token::KwMacro => println!("KwMacro"),
-            Token::KwEnd => println!("KwEnd"),
-            Token::KwInclude => println!("KwInclude"),
-            Token::Colon => println!("Colon"),
-            Token::Comma => println!("Comma"),
-            Token::Newline => println!("Newline"),
-        }
-    }
-
-    exit(0);
+    file.write_all(buffer)?;
+    file.flush()
 }
