@@ -1,0 +1,21 @@
+# Cadence Xcelium	v23.03-s007
+# ----------------------------------------------------------------------------
+xmvhdl -linedebug ../xcelium/de0Board.vho
+xmvhdl -linedebug <topTB>.vhd
+xmelab <topTB>
+xmsim -gui <topTB>
+
+# +backannotation	------------------------------------------------------
+xmvhdl -linedebug ../xcelium/de0Board.vho
+xmvhdl -linedebug <topTB>.vhd
+xmsdfc ../xcelium/de0Board_vhd.sdo
+xmelab -sdf_cmd_file netlist.sdf.cmd <topTB>
+xmsim -gui <topTB>
+
+# Verilog Netlist
+# +backannotation	------------------------------------------------------
+xmvlog -linedebug ../xcelium/de0Board.vo
+xmvhdl -linedebug <topTB>.vhd
+xmsdfc ../xcelium/de0Board_v.sdo
+xmelab -access rwc -sdf_cmd_file netlist.sdf.cmd <topTB>
+xmsim -gui <topTB>

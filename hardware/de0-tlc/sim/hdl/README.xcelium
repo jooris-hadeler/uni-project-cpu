@@ -1,0 +1,6 @@
+# Cadence Xcelium	v22.03-s005
+# ----------------------------------------------------------------------------
+xmvhdl -linedebug tlcWalk.vhd
+xmvhdl -linedebug tlcTest.vhd
+xmelab tlcTest
+xmsim -gui tlcTest

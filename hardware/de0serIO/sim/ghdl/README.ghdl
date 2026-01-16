@@ -1,0 +1,20 @@
+# ghdl		v5.0.0-dev	- selber compiliert
+# gtkwave	v3.3.103	- Ubuntu deb
+# ----------------------------------------------------------------------------
+# hdl simulation		----------------------------------------------
+mkdir work
+ghdl -a -fsynopsys --workdir=work <src..>.vhd
+ghdl -a -fsynopsys --workdir=work <topTB>.vhd
+ghdl -e -fsynopsys --workdir=work <topTB>
+ghdl -r -fsynopsys --workdir=work <topTB> --vcd=<topTB>.vcd
+gtkwave <topTB>.vcd
+
+# net simulation		----------------------------------------------
+mkdir work
+cp -pr $tamsSW/intel/simLibs/ghdl/altera* .
+cp -pr $tamsSW/intel/simLibs/ghdl/cycloneive .
+ghdl -a -fsynopsys --workdir=work ../xcelium/de0Board.vho
+ghdl -a -fsynopsys --workdir=work <topTB>.vhd
+ghdl -e -fsynopsys --workdir=work <topTB>
+ghdl -r -fsynopsys --workdir=work <topTB> --stop-time=1ms --vcd=<topTB>.vcd
+gtkwave <topTB>.vcd

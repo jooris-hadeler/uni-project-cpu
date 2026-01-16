@@ -1,0 +1,20 @@
+# ghdl		v2.0.0		- selber compiliert
+# gtkwave	v3.3.103	- Ubuntu deb
+# ----------------------------------------------------------------------------
+# hdl simulation		----------------------------------------------
+mkdir work
+ghdl -a --workdir=work tlcWalk.vhd
+ghdl -a --workdir=work tlcTest.vhd
+ghdl -e --workdir=work tlcTest
+ghdl -r --workdir=work tlcTest --vcd=tlcTest.vcd
+gtkwave tlcTest.vcd
+
+# net simulation		----------------------------------------------
+mkdir work
+cp -pr $tamsSW/altera/simLibs/ghdl/altera* .
+cp -pr $tamsSW/altera/simLibs/ghdl/cycloneive .
+ghdl -a --workdir=work ../xcelium/de0Board.vho
+ghdl -a --workdir=work de0Test.vhd
+ghdl -e --workdir=work -fsynopsys de0Test
+ghdl -r --workdir=work -fsynopsys de0Test --stop-time=1ms --vcd=de0Test.vcd
+gtkwave de0Test.vcd

@@ -1,0 +1,6 @@
+# Cadence Xcelium	v23.03-s007
+# ----------------------------------------------------------------------------
+xmvhdl -linedebug <src..>.vhd
+xmvhdl -linedebug <topTB>.vhd
+xmelab <topTB>
+xmsim -gui <topTB>
