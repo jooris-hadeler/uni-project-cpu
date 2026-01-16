@@ -1,0 +1,142 @@
+$date
+  Fri Jan 16 18:16:18 2026
+$end
+$version
+  GHDL v0
+$end
+$timescale
+  1 fs
+$end
+$scope module standard $end
+$upscope $end
+$scope module std_logic_1164 $end
+$upscope $end
+$scope module numeric_std $end
+$upscope $end
+$scope module alu_opcode $end
+$upscope $end
+$scope module mempkg $end
+$upscope $end
+$scope module memtest $end
+$var reg 32 ! pc_in_in[31:0] $end
+$var reg 32 " adress_in_in[31:0] $end
+$var reg 32 # write_data_in[31:0] $end
+$var reg 1 $ clk_in $end
+$var reg 1 % mem_write_in $end
+$var reg 1 & mem_to_reg_in_in $end
+$var reg 1 ' reg_write_in_in $end
+$var reg 1 ( pc_src_in_in $end
+$var reg 5 ) write_reg_in[4:0] $end
+$var reg 32 * read_data_out_out[31:0] $end
+$var reg 32 + adress_out_out[31:0] $end
+$var reg 32 , pc_out_out[31:0] $end
+$var reg 1 - mem_to_reg_wb_out $end
+$var reg 1 . reg_write_wb_out $end
+$var reg 1 / pc_src_if_out $end
+$var reg 1 0 dnwe $end
+$var reg 5 1 write_reg_out_out[4:0] $end
+$var reg 10 2 daddr[9:0] $end
+$var reg 32 3 ddatai[31:0] $end
+$var reg 32 4 ddatao[31:0] $end
+$scope module memi $end
+$var reg 32 5 pc_in[31:0] $end
+$var reg 32 6 address_in[31:0] $end
+$var reg 32 7 write_data[31:0] $end
+$var reg 1 8 clk $end
+$var reg 1 9 mem_write $end
+$var reg 1 : mem_to_reg_in $end
+$var reg 1 ; reg_write_in $end
+$var reg 1 < pc_src_in $end
+$var reg 5 = write_reg[4:0] $end
+$var reg 32 > read_data_out[31:0] $end
+$var reg 32 ? adress_out[31:0] $end
+$var reg 32 @ pc_out[31:0] $end
+$var reg 1 A mem_to_reg_wb $end
+$var reg 1 B reg_write_wb $end
+$var reg 1 C pc_src_if $end
+$var reg 5 D write_reg_out[4:0] $end
+$var reg 1 E dnwe $end
+$var reg 10 F daddr[9:0] $end
+$var reg 32 G ddatai[31:0] $end
+$var reg 32 H ddatao[31:0] $end
+$var reg 1 I nwe $end
+$var reg 32 J read_data[31:0] $end
+$var reg 16 K address[15:0] $end
+$var reg 5 L sel_alu_val[4:0] $end
+$var reg 5 M sel_reg_val[4:0] $end
+$comment fileio_in is not handled $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+#0
+b00000000000000000000000000000001 !
+b00000000000000000000000000000001 "
+b00000000000000000000000000000001 #
+0$
+U%
+1&
+1'
+U(
+b00000 )
+bUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU *
+bUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU +
+b00000000000000000000000000000001 ,
+U-
+U.
+U/
+U0
+bUUUUU 1
+b000000000X 2
+bUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU 3
+b00000000000000000000000000000001 4
+b00000000000000000000000000000001 5
+b00000000000000000000000000000001 6
+b00000000000000000000000000000001 7
+08
+U9
+1:
+1;
+U<
+b00000 =
+bUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU >
+bUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU ?
+b00000000000000000000000000000001 @
+UA
+UB
+UC
+bUUUUU D
+UE
+b000000000X F
+bUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU G
+b00000000000000000000000000000001 H
+1I
+bUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU J
+bUUUUUUUUUUUUUUUU K
+bUUUUU L
+bUUUUU M
+#20000000
+1$
+0%
+b00000000000000000000000000000001 +
+1-
+1.
+10
+b00000 1
+18
+09
+b00000000000000000000000000000001 ?
+1A
+1B
+b00000 D
+1E
+#40000000
+0$
+08
+#60000000
+1$
+18
+#80000000
+1%
+00
+19
+0E

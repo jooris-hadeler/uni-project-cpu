@@ -5,6 +5,7 @@ use ieee.numeric_std.all;
 entity Prozessor is 
     port (
         clk : in std_logic -- Takt-Signal für die gesamte Architektur
+
     );
 end entity Prozessor;
 

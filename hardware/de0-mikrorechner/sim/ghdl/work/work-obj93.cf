@@ -1,0 +1,69 @@
+v 4
+file "/home/christopher/Documents/Projekt/uni-project-cpu/hardware/" "de0-mikrorechner/src/procTest.vhd" "25119825ea51bb2e5f2e2335c66102102a38b6e4" "20260116171619.040":
+  entity proctest at 10( 347) + 0 on 999;
+  architecture testbench of proctest at 26( 1007) + 0 on 1000;
+file "/home/christopher/Documents/Projekt/uni-project-cpu/hardware/" "de0-mikrorechner/src/ProzessorTest.vhd" "1283fbf329006b695d02741ac5ec71a7033b2796" "20260116104114.613":
+  entity prozessortest at 1( 0) + 0 on 177;
+  architecture testbench of prozessortest at 12( 174) + 0 on 178;
+file "/home/christopher/Documents/Projekt/uni-project-cpu/hardware/" "de0-mikrorechner/src/5_Write_Back/WBTest.vhd" "5794d0bb852e52c759669ca1589c5f83b66d0892" "20260116171618.800":
+  entity wbtest at 1( 0) + 0 on 995;
+  architecture testbench of wbtest at 13( 245) + 0 on 996;
+file "/home/christopher/Documents/Projekt/uni-project-cpu/hardware/" "de0-mikrorechner/src/4_Memory_Access/MEMTest.vhd" "cf9a54c2c95f04eeb9a6b2955388c141b6850c98" "20260116171618.575":
+  entity memtest at 1( 0) + 0 on 991;
+  architecture testbench of memtest at 13( 247) + 0 on 992;
+file "/home/christopher/Documents/Projekt/uni-project-cpu/hardware/" "de0-mikrorechner/src/3_Execution/EXTest.vhd" "9f7eae6b76582e130faacc8067edc94ba4b5dae2" "20260116171618.326":
+  entity extest at 1( 0) + 0 on 987;
+  architecture testbench of extest at 13( 245) + 0 on 988;
+file "/home/christopher/Documents/Projekt/uni-project-cpu/hardware/" "de0-mikrorechner/src/2_Instruction_Decode/IDTest.vhd" "e08707587c5c336a2360ce34f296bc38aaf73a48" "20260116171618.073":
+  entity idtest at 1( 0) + 0 on 983;
+  architecture testbench of idtest at 13( 233) + 0 on 984;
+file "/home/christopher/Documents/Projekt/uni-project-cpu/hardware/" "de0-mikrorechner/src/1_Instruction_Fetch/instFTest.vhd" "4f3162ee54997c2b82e07652d6c89ba994f177ee" "20260116171617.760":
+  entity instftest at 1( 0) + 0 on 979;
+  architecture behavioral of instftest at 11( 199) + 0 on 980;
+file "/home/christopher/Documents/Projekt/uni-project-cpu/hardware/" "de0-mikrorechner/src/3_Execution/aluTest.vhd" "7410016e3cd2c18fc8a06b25eaec52dd162d9191" "20260116171617.537":
+  entity alutest at 1( 0) + 0 on 975;
+  architecture testbench of alutest at 13( 247) + 0 on 976;
+file "/home/christopher/Documents/Projekt/uni-project-cpu/hardware/" "de0-mikrorechner/src/3_Execution/alu_opcode.vhd" "4c430e2e44be946de612a7f9f7de4ebcfbe78b66" "20260116171617.395":
+  package alu_opcode at 1( 0) + 0 on 972;
+file "/home/christopher/Documents/Projekt/uni-project-cpu/hardware/" "de0-mikrorechner/src/2_Instruction_Decode/registerbank.vhd" "d2f565d1ee0e624c31d3900c88249ca9d39fd831" "20260116171617.163":
+  entity registerbank at 6( 247) + 0 on 968;
+  architecture behaviour of registerbank at 21( 802) + 0 on 969;
+file "/home/christopher/Documents/Projekt/uni-project-cpu/hardware/" "de0-mikrorechner/src/2_Instruction_Decode/funct_codes.vhd" "88ac59d4d9082da150d4b879ac431e769bf310e5" "20260116171617.102":
+  package funct_codes at 1( 0) + 0 on 966;
+file "/home/christopher/Documents/Projekt/uni-project-cpu/hardware/" "de0-mikrorechner/src/ramB.vhd" "05f82e8c56bdb791bc5102ed98f40c1a11281284" "20260116171616.980":
+  entity ramb at 19( 781) + 0 on 962;
+  architecture simmodel of ramb at 41( 1583) + 0 on 963;
+file "/home/christopher/Documents/Projekt/uni-project-cpu/hardware/" "de0-mikrorechner/src/memPkg.vhd" "f2eb11c85fefb6b64f750537892be1d8b6c0f716" "20260116171616.892":
+  package mempkg at 18( 752) + 0 on 959;
+file "/home/christopher/Documents/Projekt/uni-project-cpu/hardware/" "de0-mikrorechner/src/rom.vhd" "a64880d986a80fa4a29351cc2f399f9b92323081" "20260116171616.924":
+  entity rom at 19( 782) + 0 on 960;
+  architecture simmodel of rom at 39( 1485) + 0 on 961;
+file "/home/christopher/Documents/Projekt/uni-project-cpu/hardware/" "de0-mikrorechner/src/ramIO.vhd" "42fbed895c0020a0f180ab8cc0e0d314a23c90ae" "20260116171617.041":
+  entity ramio at 19( 787) + 0 on 964;
+  architecture simmodel of ramio at 41( 1601) + 0 on 965;
+file "/home/christopher/Documents/Projekt/uni-project-cpu/hardware/" "de0-mikrorechner/src/2_Instruction_Decode/opcodes.vhd" "53833b06977865ada70073f39f7e883f0bce37fd" "20260116171617.133":
+  package opcodes at 1( 0) + 0 on 967;
+file "/home/christopher/Documents/Projekt/uni-project-cpu/hardware/" "de0-mikrorechner/src/2_Instruction_Decode/registerbankTest.vhd" "331bb099e67565369b1188a23047f23302addbbe" "20260116171617.215":
+  entity registerbanktest at 1( 0) + 0 on 970;
+  architecture testbench of registerbanktest at 11( 218) + 0 on 971;
+file "/home/christopher/Documents/Projekt/uni-project-cpu/hardware/" "de0-mikrorechner/src/3_Execution/alu.vhd" "a6a000e51f90415772d6244867e146868271b109" "20260116171617.426":
+  entity alu at 1( 0) + 0 on 973;
+  architecture behaviour of alu at 14( 305) + 0 on 974;
+file "/home/christopher/Documents/Projekt/uni-project-cpu/hardware/" "de0-mikrorechner/src/1_Instruction_Fetch/instF.vhd" "77a83465073efbe7e243de7f2594bb636162f82b" "20260116171617.708":
+  entity instf at 1( 0) + 0 on 977;
+  architecture behaviour of instf at 18( 769) + 0 on 978;
+file "/home/christopher/Documents/Projekt/uni-project-cpu/hardware/" "de0-mikrorechner/src/2_Instruction_Decode/ID.vhd" "d01236b3817b0db64d229fdf754f33d0c4bb38bc" "20260116171617.927":
+  entity id at 1( 0) + 0 on 981;
+  architecture behaviour of id at 22( 697) + 0 on 982;
+file "/home/christopher/Documents/Projekt/uni-project-cpu/hardware/" "de0-mikrorechner/src/3_Execution/EX.vhd" "a48c66556c6de0447e5c62531dd277c072a71496" "20260116171618.256":
+  entity ex at 1( 0) + 0 on 985;
+  architecture behaviour of ex at 15( 631) + 0 on 986;
+file "/home/christopher/Documents/Projekt/uni-project-cpu/hardware/" "de0-mikrorechner/src/4_Memory_Access/MEM.vhd" "46d9aef7882b10710526441a4f3f6dc55b3d4821" "20260116171618.514":
+  entity mem at 1( 0) + 0 on 989;
+  architecture behaviour of mem at 26( 938) + 0 on 990;
+file "/home/christopher/Documents/Projekt/uni-project-cpu/hardware/" "de0-mikrorechner/src/5_Write_Back/WB.vhd" "7b7fff16e917569bfb473fdbfe6a8506067d8d9b" "20260116171618.756":
+  entity wb at 1( 0) + 0 on 993;
+  architecture behaviour of wb at 16( 463) + 0 on 994;
+file "/home/christopher/Documents/Projekt/uni-project-cpu/hardware/" "de0-mikrorechner/src/Prozessor.vhd" "9fcc9d8942c6aedb2b0087928df50a92453b9a43" "20260116171618.961":
+  entity prozessor at 1( 0) + 0 on 997;
+  architecture behaviour of prozessor at 18( 533) + 0 on 998;

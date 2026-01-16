@@ -98,7 +98,18 @@ end entity de0Board;
 architecture wrapper of de0Board is
   ------------------------------------------------------------------------------
   -- components from procPkg.vhd
-
+  component Prozessor is 
+      port (
+          clk : in std_logic; -- Takt-Signal für die gesamte Architektur
+          rstN : in STD_LOGIC;
+          iAddr : out STD_LOGIC_VECTOR(9 downto 0);
+          iData : in STD_LOGIC_VECTOR(31 downto 0);
+          dnWE : out STD_LOGIC;
+          dAddr : out STD_LOGIC_VECTOR(9 downto 0);
+          dDataI : in STD_LOGIC_VECTOR(31 downto 0);
+          dDataO : out STD_LOGIC_VECTOR(31 downto 0)
+      );
+  end component;
   ------------------------------------------------------------------------------
   signal clk, clkN, slowClk	: std_logic;
   signal rstN, dWE, dnWE	: std_logic;
@@ -122,7 +133,7 @@ begin
 
   instMemI: rom10x32 port map (iAddr, clkN, iData);
 
-  procI: pipeProc port map (slowClk, rstN, iAddr, iData,
+  procI: Prozessor port map (slowClk, rstN, iAddr, iData,
 			    dnWE, dAddr, dDataI, dDataO);
 
   dWE <= not dnWE;
