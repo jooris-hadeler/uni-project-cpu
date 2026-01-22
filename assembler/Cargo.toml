@@ -1,11 +1,16 @@
 [package]
-name = "uni-asm"
+name = "asm"
 version = "0.1.0"
 edition = "2024"
+
+[[bin]]
+name = "disasm"
+path = "src/disasm.rs"
 
 [dependencies]
 clap = { version = "4.5.54", features = ["derive"] }
 lalrpop-util = { version = "0.20", features = ["lexer"] }
+num-traits = "0.2.19"
 regex = "1"
 
 [build-dependencies]

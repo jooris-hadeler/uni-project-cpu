@@ -1,249 +1,290 @@
-use std::{collections::HashMap, vec};
+use std::collections::HashMap;
 
 use crate::ast::*;
-
-#[derive(Debug)]
-pub enum AssemblerError {
-    UndefinedLabel(String),
-    AddressOutOfBounds26(u32),
-    AddressOutOfBounds16(u32),
-}
-
-pub fn assemble(items: &[Item], insert_nops: bool) -> Result<Vec<u8>, AssemblerError> {
-    // First pass: collect label positions and expand pseudo-instructions
-    let mut label_positions: HashMap<String, u32> = HashMap::new();
-    let mut expanded_items: Vec<Item> = Vec::new();
-    let mut current_pc: u32 = 0;
-
-    for item in items {
-        match item {
-            Item::Label(name) => {
-                label_positions.insert(name.clone(), current_pc);
-            }
-            Item::Instruction(inst) => {
-                let expanded = expand_pseudo_instruction(inst, current_pc, insert_nops);
-                for expanded_inst in expanded {
-                    expanded_items.push(Item::Instruction(expanded_inst));
-                    current_pc += 1;
-                }
-            }
-        }
-    }
-
-    // Second pass: emit bytecode with resolved labels
-    let mut bytecode = Vec::new();
-
-    for item in &expanded_items {
-        if let Item::Instruction(inst) = item {
-            emit_instruction(inst, &label_positions, &mut bytecode)?;
-        }
-    }
-
-    Ok(bytecode)
-}
-
-fn is_pseudo_instruction(inst: &Instruction) -> bool {
-    matches!(
-        inst,
-        Instruction::Mov { .. }
-            | Instruction::Copy { .. }
-            | Instruction::Push { .. }
-            | Instruction::Pop { .. }
-            | Instruction::Call { .. }
-            | Instruction::PushPc { .. }
-            | Instruction::Ret
-    )
-}
-
-fn expand_pseudo_instruction(
-    inst: &Instruction,
-    current_pc: u32,
-    insert_nops: bool,
-) -> Vec<Instruction> {
-    let expanded = match inst {
-        // Mov: load 32-bit immediate into register using shi/slo
-        Instruction::Mov { dst, imm } => {
-            let hi = (*imm >> 16) as u16;
-            let lo = (*imm & 0xFFFF) as u16;
-            vec![
-                Instruction::Shi { dst: *dst, imm: hi },
-                Instruction::Slo { dst: *dst, imm: lo },
-            ]
-        }
-        // Copy: or dst, src, $0 (assuming $0 is zero register)
-        Instruction::Copy { dst, src } => {
-            vec![Instruction::Arith {
-                op: ArithOp::Or,
-                dst: *dst,
-                src1: *src,
-                src2: 0,
-            }]
-        }
-        // Push: store src to stack pointer and decrement
-        Instruction::Push { src } => {
-            vec![
-                Instruction::Mov { dst: 29, imm: 1 },
-                Instruction::Store { dst: 31, src: *src },
-                Instruction::Arith {
-                    op: ArithOp::Sub,
-                    dst: 31,
-                    src1: 31,
-                    src2: 29,
-                },
-            ]
-        }
-        // Pop: increment stack pointer and load into dst
-        Instruction::Pop { dst } => {
-            vec![
-                Instruction::Mov { dst: 29, imm: 1 },
-                Instruction::Arith {
-                    op: ArithOp::Add,
-                    dst: 31,
-                    src1: 31,
-                    src2: 29,
-                },
-                Instruction::Load { dst: *dst, src: 31 },
-            ]
-        }
-        // Call: push return address and jump
-        Instruction::Call { label } => {
-            vec![
-                Instruction::PushPc { offset: 1 },
-                Instruction::JumpLabel {
-                    label: label.clone(),
-                },
-            ]
-        }
-        // Ret: pop return address and jump
-        Instruction::Ret => {
-            vec![
-                Instruction::Pop { dst: 30 },
-                Instruction::JumpRegister { target: 30 },
-            ]
-        }
-        // PushPc: push the program counter to the stack
-        Instruction::PushPc { offset } => {
-            let pc = if insert_nops {
-                current_pc + (6 + offset) * 5
-            } else {
-                current_pc + 6 + offset
-            };
-
-            vec![
-                Instruction::Mov { dst: 30, imm: pc },
-                Instruction::Push { src: 30 },
-            ]
-        }
-        // All other instructions are already real
-        _ => {
-            vec![inst.clone()]
-        }
-    };
-
-    // Recursively expand any pseudo-instructions in the result
-    let mut fully_expanded = Vec::new();
-
-    for instr in expanded {
-        if is_pseudo_instruction(&instr) {
-            fully_expanded.extend(expand_pseudo_instruction(
-                &instr,
-                current_pc + fully_expanded.len() as u32,
-                insert_nops,
-            ));
-        } else {
-            if insert_nops {
-                fully_expanded.push(Instruction::Nop);
-                fully_expanded.push(Instruction::Nop);
-                fully_expanded.push(Instruction::Nop);
-                fully_expanded.push(Instruction::Nop);
-            }
-
-            fully_expanded.push(instr);
-        }
-    }
-
-    fully_expanded
-}
 
 const OP_ARITH: u32 = 0x00;
 const OP_SHI: u32 = 0x01;
 const OP_SLO: u32 = 0x02;
 const OP_LOAD: u32 = 0x03;
 const OP_STORE: u32 = 0x04;
-const OP_BRANCH: u32 = 0x05;
-const OP_JUMP_REG: u32 = 0x06;
-const OP_JUMP_IMM: u32 = 0x07;
-const OP_HALT: u32 = 0x3E;
+const OP_BR: u32 = 0x05;
+const OP_JR: u32 = 0x06;
+const OP_JMP: u32 = 0x07;
+const OP_JAR: u32 = 0x08;
 const OP_NOP: u32 = 0x3F;
 
-fn emit_instruction(
-    inst: &Instruction,
-    labels: &HashMap<String, u32>,
-    output: &mut Vec<u8>,
-) -> Result<(), AssemblerError> {
-    // All instructions are encoded as 32 bits (4 bytes)
-    let instr_word: u32 = match inst {
-        Instruction::Arith {
-            op,
-            dst,
-            src1,
-            src2,
-        } => {
-            let funct = match op {
-                ArithOp::Add => 0x00,
-                ArithOp::Sub => 0x01,
-                ArithOp::And => 0x02,
-                ArithOp::Or => 0x03,
-                ArithOp::Xor => 0x04,
-                ArithOp::Not => 0x09,
-                ArithOp::Lts => 0x0A,
-                ArithOp::Gts => 0x0B,
-                ArithOp::Ltu => 0x0C,
-                ArithOp::Gtu => 0x0D,
-                ArithOp::Eq => 0x0E,
-                ArithOp::Ne => 0x0F,
+const ARITH_ADD: u32 = 0x00;
+const ARITH_SUB: u32 = 0x01;
+const ARITH_AND: u32 = 0x02;
+const ARITH_OR: u32 = 0x03;
+const ARITH_XOR: u32 = 0x04;
+const ARITH_SHL: u32 = 0x05;
+const ARITH_SHR: u32 = 0x07;
+const ARITH_SAR: u32 = 0x08;
+const ARITH_NOT: u32 = 0x09;
+const ARITH_LTS: u32 = 0x0A;
+const ARITH_GTS: u32 = 0x0B;
+const ARITH_LTU: u32 = 0x0C;
+const ARITH_GTU: u32 = 0x0D;
+const ARITH_EQ: u32 = 0x0E;
+const ARITH_NE: u32 = 0x0F;
+
+const fn construct_r(op: u32, rs: u8, rt: u8, rd: u8, funct: u32) -> u32 {
+    assert!(op <= 0x3F);
+    assert!(rs <= 0x1F);
+    assert!(rt <= 0x1F);
+    assert!(rd <= 0x1F);
+    assert!(funct <= 0x3F);
+
+    op << 26 | (rs as u32) << 21 | (rt as u32) << 16 | (rd as u32) << 11 | funct
+}
+
+const fn construct_i(op: u32, rs: u8, rt: u8, imm: u16) -> u32 {
+    assert!(op <= 0x3F);
+    assert!(rs <= 0x1F);
+    assert!(rt <= 0x1F);
+
+    op << 26 | (rs as u32) << 21 | (rt as u32) << 16 | (imm as u32)
+}
+
+const fn construct_j(op: u32, addr: u32) -> u32 {
+    assert!(op <= 0x3F);
+    assert!(addr <= 0x3FFFFFF);
+
+    op << 26 | addr
+}
+
+const fn patch_i(inst: u32, imm: i16) -> u32 {
+    let inst = inst & 0xFFFF0000;
+
+    inst | ((imm as u16) as u32)
+}
+
+const fn patch_j(inst: u32, addr: u32) -> u32 {
+    assert!(addr <= 0x3FFFFFF);
+
+    let inst = inst & 0xFC000000;
+
+    inst | addr
+}
+
+struct Patch {
+    /// The index in the output `Vec<u32>` where the instruction is stored.
+    code_index: usize,
+    /// The Instruction Pointer index where this instruction is located.
+    address_idx: u32,
+    /// The label to resolve.
+    label: String,
+    /// The kind of patch to apply.
+    kind: PatchKind,
+}
+
+enum PatchKind {
+    Relative16,
+    Relative26,
+}
+
+pub struct Assembler {
+    /// The final machine code
+    code: Vec<u32>,
+    /// Map of Label Name -> Instruction Index (Word Address)
+    symbol_table: HashMap<String, u32>,
+    /// List of instructions that need patching after the first pass
+    patches: Vec<Patch>,
+    /// Tracks the current Instruction Index (0, 1, 2...)
+    current_idx: u32,
+    /// Should the assembler emit nops between instructions
+    should_emit_nops: bool,
+}
+
+impl Assembler {
+    pub fn new(should_emit_nops: bool) -> Self {
+        Self {
+            code: Vec::new(),
+            symbol_table: HashMap::new(),
+            patches: Vec::new(),
+            current_idx: 0,
+            should_emit_nops,
+        }
+    }
+
+    pub fn assemble(mut self, items: &[Item]) -> Result<Vec<u32>, String> {
+        // --- STAGE 1 & 2: Expansion & Emission ---
+        for item in items {
+            match item {
+                Item::Label(name) => {
+                    if self.symbol_table.contains_key(name) {
+                        return Err(format!("Duplicate label definition: {}", name));
+                    }
+                    // Map label to the current instruction index
+                    self.symbol_table.insert(name.clone(), self.current_idx);
+                }
+                Item::Real(inst) => self.process_real(inst),
+                Item::Pseudo(inst) => self.process_pseudo(inst),
+            }
+        }
+
+        // --- STAGE 3: Patching ---
+        self.apply_patches()?;
+
+        Ok(self.code)
+    }
+
+    fn emit(&mut self, instruction: u32) {
+        self.code.push(instruction);
+        self.current_idx += 1;
+    }
+
+    fn emit_nops(&mut self) {
+        for _ in 0..4 {
+            self.emit(construct_j(OP_NOP, 0));
+        }
+    }
+
+    fn emit_optional_nops(&mut self) {
+        if self.should_emit_nops {
+            self.emit_nops();
+        }
+    }
+
+    fn process_real(&mut self, inst: &RealInstruction) {
+        match inst {
+            RealInstruction::Arith { op, rd, rs, rt } => {
+                let funct = match op {
+                    ArithOp::Add => ARITH_ADD,
+                    ArithOp::Sub => ARITH_SUB,
+                    ArithOp::And => ARITH_AND,
+                    ArithOp::Or => ARITH_OR,
+                    ArithOp::Xor => ARITH_XOR,
+                    ArithOp::Shl => ARITH_SHL,
+                    ArithOp::Shr => ARITH_SHR,
+                    ArithOp::Sar => ARITH_SAR,
+                    ArithOp::Not => ARITH_NOT,
+                    ArithOp::Lts => ARITH_LTS,
+                    ArithOp::Ltu => ARITH_LTU,
+                    ArithOp::Gts => ARITH_GTS,
+                    ArithOp::Gtu => ARITH_GTU,
+                    ArithOp::Eq => ARITH_EQ,
+                    ArithOp::Ne => ARITH_NE,
+                };
+
+                self.emit(construct_r(OP_ARITH, *rs, *rt, *rd, funct));
+                self.emit_optional_nops();
+            }
+            RealInstruction::Shi { rs, rt, imm } => {
+                self.emit(construct_i(OP_SHI, *rs, *rt, *imm));
+                self.emit_optional_nops();
+            }
+            RealInstruction::Slo { rs, rt, imm } => {
+                self.emit(construct_i(OP_SLO, *rs, *rt, *imm));
+                self.emit_optional_nops();
+            }
+            RealInstruction::Load { rs, rt, imm } => {
+                self.emit(construct_i(OP_LOAD, *rs, *rt, *imm as u16));
+                self.emit_optional_nops();
+            }
+            RealInstruction::Store { rs, rt, imm } => {
+                self.emit(construct_i(OP_STORE, *rs, *rt, *imm as u16));
+                self.emit_optional_nops();
+            }
+            RealInstruction::Jr { rs } => {
+                self.emit(construct_r(OP_JR, *rs, 0, 0, 0));
+                self.emit_nops();
+            }
+            RealInstruction::Nop => {
+                self.emit(construct_j(OP_NOP, 0));
+            }
+        };
+    }
+
+    fn process_pseudo(&mut self, inst: &PseudoInstruction) {
+        match inst {
+            // Mov expands to Shi + Slo (2 instructions)
+            PseudoInstruction::Mov { dst, imm } => {
+                let upper = (imm >> 16) as u16;
+                let lower = (imm & 0xFFFF) as u16;
+                self.emit(construct_i(OP_SHI, 0, *dst, upper));
+                self.emit_nops();
+                self.emit(construct_i(OP_SLO, *dst, *dst, lower));
+                self.emit_nops();
+            }
+            // Copy expands to OR (1 instruction)
+            PseudoInstruction::Copy { dst, src } => {
+                self.emit(construct_r(OP_ARITH, *src, *src, *dst, ARITH_OR));
+                self.emit_nops();
+            }
+            // Branch to Label
+            PseudoInstruction::Br { rs, rt, label } => {
+                self.record_patch(label.clone(), PatchKind::Relative16);
+                self.emit(construct_i(OP_BR, *rs, *rt, 0));
+                self.emit_nops();
+            }
+            // Jump to Label
+            PseudoInstruction::Jmp { label } => {
+                self.record_patch(label.clone(), PatchKind::Relative26);
+                self.emit(construct_j(OP_JMP, 0));
+                self.emit_nops();
+            }
+            // Jar to Label
+            PseudoInstruction::Jar { label } => {
+                self.record_patch(label.clone(), PatchKind::Relative26);
+                self.emit(construct_j(OP_JAR, 0));
+                self.emit_nops();
+            }
+        }
+    }
+
+    fn record_patch(&mut self, label: String, kind: PatchKind) {
+        self.patches.push(Patch {
+            code_index: self.code.len(),
+            address_idx: self.current_idx,
+            label,
+            kind,
+        });
+    }
+
+    fn apply_patches(&mut self) -> Result<(), String> {
+        for patch in &self.patches {
+            let target_idx = *self
+                .symbol_table
+                .get(&patch.label)
+                .ok_or_else(|| format!("Undefined label: {}", patch.label))?;
+
+            let inst = self.code[patch.code_index];
+
+            let new_inst = match patch.kind {
+                PatchKind::Relative16 => {
+                    let pc_next = patch.address_idx + 1;
+                    let diff = (target_idx as i32) - (pc_next as i32);
+
+                    // Check if offset fits in signed 16-bit integer
+                    if diff < i16::MIN as i32 || diff > i16::MAX as i32 {
+                        return Err(format!(
+                            "16-bit offset to '{}' out of range ({})",
+                            patch.label, diff
+                        ));
+                    }
+
+                    patch_i(inst, diff as i16)
+                }
+                PatchKind::Relative26 => {
+                    let pc_next = patch.address_idx + 1;
+                    let diff = (target_idx as i32) - (pc_next as i32);
+
+                    // Check if offset fits in signed 26-bit integer
+                    if diff < -0x2000000 || diff > 0x1FFFFFF {
+                        return Err(format!(
+                            "26-bit offset to '{}' out of range ({})",
+                            patch.label, diff
+                        ));
+                    }
+
+                    patch_j(inst, ((diff as i64) as u32) & 0x3FFFFFF)
+                }
             };
 
-            OP_ARITH << 26
-                | (*src1 as u32) << 21
-                | (*src2 as u32) << 16
-                | (*dst as u32) << 11
-                | funct
+            self.code[patch.code_index] = new_inst;
         }
-        Instruction::Halt => OP_HALT << 26,
-        Instruction::Nop => OP_NOP << 26,
-        Instruction::Shi { dst, imm } => OP_SHI << 26 | (*dst as u32) << 16 | (*imm as u32),
-        Instruction::Slo { dst, imm } => OP_SLO << 26 | (*dst as u32) << 16 | (*imm as u32),
-        Instruction::JumpLabel { label } => {
-            let instr_addr = *labels
-                .get(label)
-                .ok_or_else(|| AssemblerError::UndefinedLabel(label.clone()))?;
-
-            if instr_addr > 0x3FFFFFF {
-                return Err(AssemblerError::AddressOutOfBounds26(instr_addr));
-            }
-
-            OP_JUMP_IMM << 26 | (instr_addr & 0x3FFFFFF)
-        }
-        Instruction::JumpRegister { target } => OP_JUMP_REG << 26 | (*target as u32) << 21,
-        Instruction::Branch { cond, label } => {
-            let instr_addr = *labels
-                .get(label)
-                .ok_or_else(|| AssemblerError::UndefinedLabel(label.clone()))?;
-
-            if instr_addr > 0xFFFF {
-                return Err(AssemblerError::AddressOutOfBounds16(instr_addr));
-            }
-
-            OP_BRANCH << 26 | (*cond as u32) << 21 | (instr_addr & 0xFFFF)
-        }
-        Instruction::Load { dst, src } => OP_LOAD << 26 | (*src as u32) << 21 | (*dst as u32) << 16,
-        Instruction::Store { dst, src } => {
-            OP_STORE << 26 | (*src as u32) << 21 | (*dst as u32) << 16
-        }
-        _ => unreachable!("Pseudo-instructions should be expanded"),
-    };
-
-    output.extend(instr_word.to_be_bytes());
-    Ok(())
+        Ok(())
+    }
 }

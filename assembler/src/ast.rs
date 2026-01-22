@@ -1,70 +1,29 @@
 #[derive(Debug, Clone, PartialEq)]
 pub enum Item {
-    Instruction(Instruction),
+    Real(RealInstruction),
+    Pseudo(PseudoInstruction),
     Label(String),
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Instruction {
-    Arith {
-        op: ArithOp,
-        dst: u8,
-        src1: u8,
-        src2: u8,
-    },
-    Halt,
+pub enum RealInstruction {
+    Arith { op: ArithOp, rd: u8, rs: u8, rt: u8 },
+    Shi { rs: u8, rt: u8, imm: u16 },
+    Slo { rs: u8, rt: u8, imm: u16 },
+    Load { rs: u8, rt: u8, imm: i16 },
+    Store { rs: u8, rt: u8, imm: i16 },
+    Jr { rs: u8 },
     Nop,
-    Shi {
-        dst: u8,
-        imm: u16,
-    },
-    Slo {
-        dst: u8,
-        imm: u16,
-    },
-    JumpLabel {
-        label: String,
-    },
-    JumpRegister {
-        target: u8,
-    },
-    Branch {
-        cond: u8,
-        label: String,
-    },
-    Load {
-        dst: u8,
-        src: u8,
-    },
-    Store {
-        dst: u8,
-        src: u8,
-    },
+}
 
-    // === PSEUDO INSTRUCTIONS ===
-    Mov {
-        dst: u8,
-        imm: u32,
-    },
-    Copy {
-        dst: u8,
-        src: u8,
-    },
-    Push {
-        src: u8,
-    },
-    Pop {
-        dst: u8,
-    },
-    Call {
-        label: String,
-    },
-    Ret,
+#[derive(Debug, Clone, PartialEq)]
+pub enum PseudoInstruction {
+    Mov { dst: u8, imm: u32 },
+    Copy { dst: u8, src: u8 },
 
-    // === HELPER INSTRUCTIONS ===
-    PushPc {
-        offset: u32,
-    },
+    Br { rs: u8, rt: u8, label: String },
+    Jmp { label: String },
+    Jar { label: String },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -74,6 +33,9 @@ pub enum ArithOp {
     And,
     Or,
     Xor,
+    Shl,
+    Shr,
+    Sar,
     Not,
     Lts,
     Ltu,

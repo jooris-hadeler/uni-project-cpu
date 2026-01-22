@@ -16,27 +16,9 @@ pub Program: Vec<Item> = {
 };
 
 pub Item: Item = {
-    <Instruction> => Item::Instruction(<>),
     <Label> => Item::Label(<>),
-};
-
-pub Instruction: Instruction = {
-    <ArithInstruction> => <>,
-    <SimpleInstruction> => <>,
-    <ImmInstruction> => <>,
-    <MemInstruction> => <>,
-    <JumpInstruction> => <>,
-    <PseudoInstruction> => <>,
-};
-
-ArithInstruction: Instruction = {
-    <op:ArithOp> <dst:Register> "," <src1:Register> "," <src2:Register> => {
-        Instruction::Arith { op, dst, src1, src2 }
-    },
-
-    "not" <dst:Register> "," <src1: Register> => {
-        Instruction::Arith { op: ArithOp::Not, dst, src1, src2: 0 }
-    },
+    <RealInstruction> => Item::Real(<>),
+    <PseudoInstruction> => Item::Pseudo(<>),
 };
 
 ArithOp: ArithOp = {
@@ -45,6 +27,9 @@ ArithOp: ArithOp = {
     "and" => ArithOp::And,
     "or" => ArithOp::Or,
     "xor" => ArithOp::Xor,
+    "shl" => ArithOp::Shl,
+    "shr" => ArithOp::Shr,
+    "sar" => ArithOp::Sar,
     "lts" => ArithOp::Lts,
     "ltu" => ArithOp::Ltu,
     "gts" => ArithOp::Gts,
@@ -53,60 +38,90 @@ ArithOp: ArithOp = {
     "ne" => ArithOp::Ne,
 };
 
-SimpleInstruction: Instruction = {
-    "halt" => Instruction::Halt,
-    "nop" => Instruction::Nop,
+RealInstruction: RealInstruction = {
+    <op:ArithOp> <rd:Register> "," <rs:Register> "," <rt:Register> => {
+        RealInstruction::Arith { op, rd, rs, rt }
+    },
+
+    "not" <rd:Register> "," <rs: Register> => {
+        RealInstruction::Arith { op: ArithOp::Not, rd, rs, rt: 0 }
+    },
+
+    "nop" => RealInstruction::Nop,
+
+    "load" <rt:Register> "," <rs:Register> => {
+        RealInstruction::Load { rt, rs, imm: 0 }
+    },
+
+    "load" <rt:Register> "," <s:Number> "(" <rs:Register> ")" =>? {
+        i16::from_str(s)
+            .map(|imm| RealInstruction::Load { rt, rs, imm })
+            .map_err(|_| lalrpop_util::ParseError::User {
+                error: "Invalid 16-bit load offset"
+            })
+    },
+
+    "store" <rs:Register> "," <rt:Register> => {
+        RealInstruction::Store { rt, rs, imm: 0 }
+    },
+
+    "store" <s:Number> "(" <rs:Register> ")" "," <rt:Register> =>? {
+        i16::from_str(s)
+            .map(|imm| RealInstruction::Store { rt, rs, imm })
+            .map_err(|_| lalrpop_util::ParseError::User {
+                error: "Invalid 16-bit store offset"
+            })
+    },
+    
+    "shi" <rs:Register> "," <s:Number> =>? {
+        u16::from_str(s)
+            .map(|imm| RealInstruction::Shi { rs, rt: rs, imm })
+            .map_err(|_| lalrpop_util::ParseError::User {
+                error: "Invalid 16-bit set high value"
+            })
+    },
+
+    "slo" <rs:Register> "," <s:Number> =>? {
+        u16::from_str(s)
+            .map(|imm| RealInstruction::Slo { rs, rt: rs, imm })
+            .map_err(|_| lalrpop_util::ParseError::User {
+                error: "Invalid 16-bit set low value"
+            })
+    },
+
+    "jr" <rs:Register> => {
+        RealInstruction::Jr { rs }
+    },
 };
 
-MemInstruction: Instruction = {
-    "load" <dst:Register> "," <src:Register> => {
-        Instruction::Load { dst, src }
+PseudoInstruction: PseudoInstruction = {
+    "mov" <dst:Register> "," <s:Number> =>? {
+        u32::from_str(s)
+            .map(|imm| PseudoInstruction::Mov { dst, imm })
+            .map_err(|_| lalrpop_util::ParseError::User {
+                error: "Invalid 26-bit address"
+            })
     },
-    "store" <dst:Register> "," <src:Register> => {
-        Instruction::Store { dst, src }
-    },
-};
 
-ImmInstruction: Instruction = {
-    "shi" <dst:Register> "," <imm:Imm16> => {
-        Instruction::Shi { dst, imm }
-    },
-    "slo" <dst:Register> "," <imm:Imm16> => {
-        Instruction::Slo { dst, imm }
-    },
-};
-
-JumpInstruction: Instruction = {
-    "jmp" <s:r"[a-zA-Z_\.][a-zA-Z0-9_\.]*"> => {
-        Instruction::JumpLabel { label: s.to_string() }
-    },
-    "jmp" <target:Register> => {
-        Instruction::JumpRegister { target }
-    },
-    "br" <cond:Register> "," <s:r"[a-zA-Z_\.][a-zA-Z0-9_\.]*"> => {
-        Instruction::Branch { cond, label: s.to_string() }
-    },
-};
-
-PseudoInstruction: Instruction = {
-    "mov" <dst:Register> "," <imm:Imm32> => {
-        Instruction::Mov { dst, imm }
-    },
     "copy" <dst:Register> "," <src:Register> => {
-        Instruction::Copy { dst, src }
+        PseudoInstruction::Copy { dst, src }
     },
-    "push" <src:Register> => {
-        Instruction::Push { src }
+
+    "br" <rs:Register> "," <rt:Register> "," <s:r"[a-zA-Z_\.][a-zA-Z0-9_\.]*"> => {
+        PseudoInstruction::Br { rs, rt, label: s.to_string() }
     },
-    "pop" <dst:Register> => {
-        Instruction::Pop { dst }
+
+    "jmp" <s:r"[a-zA-Z_\.][a-zA-Z0-9_\.]*"> => {
+        PseudoInstruction::Jmp { label: s.to_string() }
     },
-    "call" <s:r"[a-zA-Z_\.][a-zA-Z0-9_\.]*"> => {
-        Instruction::Call { label: s.to_string() }
+
+    "jar" <s:r"[a-zA-Z_\.][a-zA-Z0-9_\.]*"> => {
+        PseudoInstruction::Jar { label: s.to_string() }
     },
-    "ret" => {
-        Instruction::Ret
-    }
+};
+
+Number: &'input str = {
+    <s:r"-?[0-9]+"> => s,
 };
 
 Register: u8 = {
@@ -123,24 +138,6 @@ Register: u8 = {
         } else {
             Ok(val)
         }
-    },
-};
-
-Imm32: u32 = {
-    <s:r"[0-9]+"> =>? {
-        u32::from_str(s)
-            .map_err(|_| lalrpop_util::ParseError::User {
-                error: "Invalid 32-bit immediate value"
-            })
-    },
-};
-
-Imm16: u16 = {
-    <s:r"[0-9]+"> =>? {
-        u16::from_str(s)
-            .map_err(|_| lalrpop_util::ParseError::User {
-                error: "Invalid 16-bit immediate value"
-            })
     },
 };
 

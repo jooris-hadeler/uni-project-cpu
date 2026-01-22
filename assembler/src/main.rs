@@ -10,6 +10,8 @@ use std::{
 
 use clap::Parser;
 use lalrpop_util::lalrpop_mod;
+
+use crate::asm::Assembler;
 lalrpop_mod!(pub grammar);
 
 #[derive(Debug, clap::Parser)]
@@ -97,22 +99,13 @@ fn main() {
         }
     };
 
-    let code = match asm::assemble(&program, cli.insert_nops) {
-        Ok(code) => code,
-        Err(e) => {
-            eprint!("Error assembling:");
-
-            match e {
-                asm::AssemblerError::UndefinedLabel(label) => {
-                    eprintln!("undefined label `{label}` referenced")
-                }
-                asm::AssemblerError::AddressOutOfBounds26(addr) => {
-                    eprintln!("address 0x{addr:X} does not fit in 26 bits")
-                }
-                asm::AssemblerError::AddressOutOfBounds16(addr) => {
-                    eprintln!("address 0x{addr:X} does not fit in 16 bits")
-                }
-            }
+    let code = match Assembler::new(cli.insert_nops).assemble(&program) {
+        Ok(code) => code
+            .into_iter()
+            .flat_map(u32::to_be_bytes)
+            .collect::<Vec<u8>>(),
+        Err(err) => {
+            eprintln!("Error: {}", err);
             exit(-1);
         }
     };
