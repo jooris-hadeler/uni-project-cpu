@@ -1,7 +1,7 @@
 library ieee; 
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
-use work.memPkg.all;
+-- use work.memPkg.all;
 --library work;
 -- memory sim referenzen
 
@@ -29,7 +29,7 @@ architecture behaviour of MEM is
     signal read_data: std_logic_vector(31 downto 0);
     signal address : std_logic_vector(15 downto 0);
     signal sel_alu_val, sel_reg_val : std_logic_vector(4 downto 0);
-    signal fileIO_in: fileIoT := none;
+--    signal fileIO_in: fileIoT := none;
     
     begin
         dnWE <= not mem_write;
@@ -39,11 +39,11 @@ architecture behaviour of MEM is
         pc_out <= pc_in;
         pc_src_IF <= pc_src_in;
 
-        init : process is
-        begin
-            dAddr <= "0000000000";
-            wait;
-        end process init;
+--        init : process is
+--        begin
+--          dAddr <= "0000000000";
+--          wait;
+--      end process init;
 
         mem_seg_process : process (clk) is
         begin

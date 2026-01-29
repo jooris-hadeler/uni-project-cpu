@@ -16,21 +16,21 @@ entity ID is
 
         reg_dest, reg_write_EX, alu_src,
         pc_src, mem_write,
-        mem_to_reg_EX, jr, jar :              out std_logic
+        mem_to_reg_EX, jr, jar :              out std_logic;
+        reg4 : out STD_LOGIC_VECTOR(7 downto 0)
     );
 end entity ID;
 architecture behaviour of ID
     is component registerbank is
-    port(
-        clk :   in std_logic;
-        dIn :   in signed(31 downto 0); --input
+    port(clk : in std_logic;
+        dIn : in signed(31 downto 0); --input
         dOutA : out signed(31 downto 0); --outputA
         dOutB : out signed(31 downto 0); --outputB
-        selA :  in std_logic_vector(5 downto 1); --Registernr für dOutA
-        selB :  in std_logic_vector(5 downto 1); --Registernr für dOutB
-        selD :  in std_logic_vector(5 downto 1); --Registernr für dIn
-        wE :    in std_logic
-    );
+        selA : in STD_LOGIC_VECTOR(4 downto 0); --Registernr für dOutA
+        selB : in STD_LOGIC_VECTOR(4 downto 0); --Registernr für dOutB
+        selD : in STD_LOGIC_VECTOR(4 downto 0); --Registernr für dIn
+        wE : in std_logic;
+        reg4 : out STD_LOGIC_VECTOR(7 downto 0));
     end component;
 
     signal sel_alu_val, sel_reg_val, rt_sig : std_logic_vector(4 downto 0);
@@ -57,7 +57,8 @@ architecture behaviour of ID
             selA => sel_alu_val,
             selB => sel_reg_val,
             selD => write_reg,
-            wE => reg_wE );
+            wE => reg_wE,
+            reg4 => reg4 );
         
         id_seg_process : process (clk) is
         begin

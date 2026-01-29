@@ -1,0 +1,14 @@
+Analysis & Synthesis Status : Successful - Thu Jan 29 16:35:40 2026
+Quartus Prime Version : 25.1std.0 Build 1129 10/21/2025 SC Standard Edition
+Revision Name : de0Board
+Top-level Entity Name : de0Board
+Family : Cyclone IV E
+Total logic elements : 1,053
+    Total combinational functions : 864
+    Dedicated logic registers : 373
+Total registers : 373
+Total pins : 15
+Total virtual pins : 0
+Total memory bits : 67,584
+Embedded Multiplier 9-bit elements : 0
+Total PLLs : 1

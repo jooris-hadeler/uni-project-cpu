@@ -1,11 +1,11 @@
 library ieee; 
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
-use work.memPkg.all;        -- Import des gesamten Packages memPkg
+-- use work.memPkg.all;        -- Import des gesamten Packages memPkg
 
 entity instF is -- Schnittstelle des Instruction-Fetch
     port (
-        clk, pc_src : in std_logic := '0'; -- Takt-Signal, Steuersignal für Sprung
+        clk, pc_src : in std_logic := '0'; -- Takt-Signal, Steuersignal fï¿½r Sprung
         rstN : in std_logic := '1';
         iAddr : out STD_LOGIC_VECTOR(9 downto 0);
         iData : in STD_LOGIC_VECTOR(31 downto 0);

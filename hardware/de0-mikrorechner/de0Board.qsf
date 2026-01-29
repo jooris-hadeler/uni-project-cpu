@@ -7,7 +7,7 @@
 set_global_assignment -name FAMILY "Cyclone IV E"
 set_global_assignment -name DEVICE EP4CE22F17C6
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 12.0
-set_global_assignment -name LAST_QUARTUS_VERSION "22.1std.0 Standard Edition"
+set_global_assignment -name LAST_QUARTUS_VERSION "25.1std.0 Standard Edition"
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "15:22:16 DECEMBER 29,2014"
 set_global_assignment -name DEVICE_FILTER_PACKAGE FBGA
 set_global_assignment -name DEVICE_FILTER_PIN_COUNT 256
@@ -35,19 +35,11 @@ set_global_assignment -name PROJECT_OUTPUT_DIRECTORY qOutput
 # Source files
 #-------------------------------------------------------------------------------
 set_global_assignment -name TOP_LEVEL_ENTITY de0Board
-set_global_assignment -name SDC_FILE de0Board.sdc
 #set_global_assignment -name MISC_FILE de0Board.dpf
 #
 # add your VHDL source files here...
 # ------------------------------------------------------------------------------
-set_global_assignment -name VHDL_FILE de0Board.vhd
-set_global_assignment -name VHDL_FILE cDisplay/cDispPkg.vhd
 #set_global_assignment -name VHDL_FILE cDisplay/cDisp14x6.vhd
-set_global_assignment -name VHDL_FILE src/procPkg.vhd
-set_global_assignment -name VHDL_FILE src/pipeProc.vhd
-set_global_assignment -name QIP_FILE memory/ram10x32.qip
-set_global_assignment -name QIP_FILE memory/rom10x32.qip
-set_global_assignment -name QIP_FILE cDisplay/pll/pllClk.qip
 #set_global_assignment -name QIP_FILE cDisplay/rom/charROM.qip
  
 #-------------------------------------------------------------------------------
@@ -401,3 +393,26 @@ set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to gpio2In[2]
 
 #-------------------------------------------------------------------------------
 # de0Board.qsf - end
+
+set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
+set_global_assignment -name VHDL_FILE src/1_Instruction_Fetch/instF.vhd
+set_global_assignment -name VHDL_FILE src/Prozessor.vhd
+set_global_assignment -name VHDL_FILE src/5_Write_Back/WB.vhd
+set_global_assignment -name VHDL_FILE src/4_Memory_Access/MEM.vhd
+set_global_assignment -name VHDL_FILE src/3_Execution/EX.vhd
+set_global_assignment -name VHDL_FILE src/3_Execution/alu_opcode.vhd
+set_global_assignment -name VHDL_FILE src/3_Execution/alu.vhd
+set_global_assignment -name VHDL_FILE src/2_Instruction_Decode/registerbank.vhd
+set_global_assignment -name VHDL_FILE src/2_Instruction_Decode/opcodes.vhd
+set_global_assignment -name VHDL_FILE src/2_Instruction_Decode/funct_codes.vhd
+set_global_assignment -name VHDL_FILE src/2_Instruction_Decode/ID.vhd
+set_global_assignment -name SDC_FILE de0Board.sdc
+set_global_assignment -name VHDL_FILE de0Board.vhd
+set_global_assignment -name VHDL_FILE cDisplay/cDispPkg.vhd
+set_global_assignment -name VHDL_FILE src/procPkg.vhd
+set_global_assignment -name VHDL_FILE src/pipeProc.vhd
+set_global_assignment -name QIP_FILE memory/ram10x32.qip
+set_global_assignment -name QIP_FILE memory/rom10x32.qip
+set_global_assignment -name QIP_FILE cDisplay/pll/pllClk.qip
+set_global_assignment -name SOURCE_FILE qOutput/Chain1.cdf.bak
+set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top

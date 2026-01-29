@@ -11,7 +11,8 @@ entity Prozessor is
         dnWE : out STD_LOGIC;
         dAddr : out STD_LOGIC_VECTOR(9 downto 0);
         dDataI : in STD_LOGIC_VECTOR(31 downto 0);
-        dDataO : out STD_LOGIC_VECTOR(31 downto 0)
+        dDataO : out STD_LOGIC_VECTOR(31 downto 0);
+        reg4 : out STD_LOGIC_VECTOR(7 downto 0)
     );
 end entity Prozessor;
 
@@ -19,7 +20,7 @@ architecture behaviour of Prozessor is
 
     component instF is -- Schnittstelle des Instruction-Fetch
     port (
-        clk, pc_src : in std_logic := '0'; -- Takt-Signal, Steuersignal f�r Sprung
+        clk, pc_src : in std_logic := '0'; -- Takt-Signal, Steuersignal f�r Sprung
         rstN : in std_logic := '1';
         iAddr : out STD_LOGIC_VECTOR(9 downto 0);
         iData : in STD_LOGIC_VECTOR(31 downto 0);
@@ -39,7 +40,8 @@ architecture behaviour of Prozessor is
 
         reg_dest, reg_write_EX, alu_src,
         pc_src, mem_write,
-        mem_to_reg_EX, jr, jar :              out std_logic
+        mem_to_reg_EX, jr, jar :              out std_logic;
+        reg4 : out STD_LOGIC_VECTOR(7 downto 0)
     );
     end component;
 
@@ -87,6 +89,7 @@ architecture behaviour of Prozessor is
     signal pc_ID, instruction_ID, write_data_ID : std_logic_vector(31 downto 0);
     signal reg_wE_ID : std_logic; -- ID
     signal write_reg_ID : std_logic_vector(4 downto 0); -- ID
+
 
     -- signal für EX
     signal imm_EX, pc_EX, alu_val_EX, reg_val_EX : std_logic_vector(31 downto 0); -- EX
@@ -139,7 +142,8 @@ architecture behaviour of Prozessor is
         mem_write =>mem_write_EX,
         mem_to_reg_EX =>mem_to_reg_EX,
         jr => jr_EX,
-        jar => jar_EX
+        jar => jar_EX,
+        reg4 => reg4
     );
 
     EXI: EX
@@ -207,9 +211,9 @@ architecture behaviour of Prozessor is
         write_data     => write_data_ID   -- Finaler Wert für Register-Write
     );
 
-    keep_alive : process
-        begin
-            wait;
-        end process;
+--    keep_alive : process
+--        begin
+--            wait;
+--        end process;
 
 end behaviour;

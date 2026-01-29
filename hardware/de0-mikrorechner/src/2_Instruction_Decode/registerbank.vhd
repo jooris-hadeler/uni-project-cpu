@@ -15,7 +15,8 @@ entity registerbank is
         selA : in STD_LOGIC_VECTOR(4 downto 0); --Registernr für dOutA
         selB : in STD_LOGIC_VECTOR(4 downto 0); --Registernr für dOutB
         selD : in STD_LOGIC_VECTOR(4 downto 0); --Registernr für dIn
-        wE : in std_logic);
+        wE : in std_logic;
+        reg4 : out STD_LOGIC_VECTOR(7 downto 0));
 end entity registerbank; 
 
 architecture behaviour of registerbank is 
@@ -26,6 +27,7 @@ begin
         begin 
             dOutA <= registers(to_integer(unsigned(selA)));
             dOutB <= registers(to_integer(unsigned(selB)));
+            reg4 <= STD_LOGIC_VECTOR(registers(to_integer("00001"))(7 downto 0));
     end process reg_mult;
 
       reg_demult : process (clk) is

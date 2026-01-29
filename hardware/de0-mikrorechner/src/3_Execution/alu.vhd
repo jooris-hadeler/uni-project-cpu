@@ -36,27 +36,27 @@ architecture behaviour of alu is
 			end if;
 	    when alu_lsl => 
 			shift := opA;
-			for i in to_integer(opB) downto 1 loop
+--			for i in to_integer(opB) downto 1 loop
 				shift := shift(30 downto 0) & '0';
-			end loop;
+--			end loop;
 			result <= shift;
 			if shift = 0 then
 				zero <= '1';
 			end if;
 		when alu_lsr => 
 			shift := opA;
-			for i in to_Integer(opB) downto 1 loop
+--			for i in to_Integer(opB) downto 1 loop
 				shift := '0' & shift(31 downto 1);
-			end loop;
+--			end loop;
 			result <= shift;
 			if shift = 0 then
 				zero <= '1';
 			end if;
 		when alu_asr => 
 				shift := opA;
-			for i in to_integer(opB) downto 1 loop
+--			for i in to_integer(opB) downto 1 loop
 				shift := shift(31) & shift(31 downto 1);
-			end loop;
+--			end loop;
 			result <= shift;
 			if shift = 0 then
 				zero <= '1';

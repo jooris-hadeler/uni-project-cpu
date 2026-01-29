@@ -107,7 +107,8 @@ architecture wrapper of de0Board is
           dnWE : out STD_LOGIC;
           dAddr : out STD_LOGIC_VECTOR(9 downto 0);
           dDataI : in STD_LOGIC_VECTOR(31 downto 0);
-          dDataO : out STD_LOGIC_VECTOR(31 downto 0)
+          dDataO : out STD_LOGIC_VECTOR(31 downto 0);
+          reg4 : out STD_LOGIC_VECTOR(7 downto 0)
       );
   end component;
   ------------------------------------------------------------------------------
@@ -115,6 +116,7 @@ architecture wrapper of de0Board is
   signal rstN, dWE, dnWE	: std_logic;
   signal iAddr, dAddr		: std_logic_vector( 9 downto 0);
   signal iData, dDataI, dDataO	: std_logic_vector(31 downto 0);
+  signal reg4 : std_logic_vector(7 downto 0);
 
 begin
   -- disable unused hardware
@@ -134,7 +136,7 @@ begin
   instMemI: rom10x32 port map (iAddr, clkN, iData);
 
   procI: Prozessor port map (slowClk, rstN, iAddr, iData,
-			    dnWE, dAddr, dDataI, dDataO);
+			    dnWE, dAddr, dDataI, dDataO, reg4);
 
   dWE <= not dnWE;
 
@@ -144,7 +146,7 @@ begin
   --    gated-clock:    (iAddr = 1023) => "halt"
   ------------------------------------------------------------------------------
   clkP: process (rstN, clk) is
-    variable clkDiv	: unsigned (20 downto 0);	-- clock divider
+    variable clkDiv	: unsigned (14 downto 0);	-- clock divider
 --  variable clkDiv	: unsigned (2 downto 0);	-- for netlist-sim.
   begin
     if rstN = '0' then					-- async. reset
@@ -167,7 +169,7 @@ begin
     end if;
   end process butP;
 
-  led <= iAddr(7 downto 0);
+  led <= reg4;
 end architecture wrapper;
 
 --------------------------------------------------------------------------------
