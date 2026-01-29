@@ -3,10 +3,9 @@ entry:
 
 loop:
     nop
+    nop
+    nop
+    nop
     add $1, $1, $1
 
     jmp loop
-    
-    nop 
-    nop
-    add $1, $1, $1
