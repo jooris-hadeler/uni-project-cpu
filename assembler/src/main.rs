@@ -26,6 +26,10 @@ struct CLI {
     /// Insert 4 nop instructions after every real instruction.
     #[arg(short, long)]
     insert_nops: bool,
+
+    /// Output VHDL mem file
+    #[arg(short, long, default_value_t = false)]
+    vhdl_mem: bool,
 }
 
 fn main() {
@@ -100,17 +104,20 @@ fn main() {
     };
 
     let code = match Assembler::new(cli.insert_nops).assemble(&program) {
-        Ok(code) => code
-            .into_iter()
-            .flat_map(u32::to_be_bytes)
-            .collect::<Vec<u8>>(),
+        Ok(code) => code,
         Err(err) => {
             eprintln!("Error: {}", err);
             exit(-1);
         }
     };
 
-    match write_to_file(&cli.output, &code) {
+    let result = if cli.vhdl_mem {
+        write_vhdl_to_file(&cli.output, code)
+    } else {
+        write_to_file(&cli.output, code)
+    };
+
+    match result {
         Ok(_) => eprintln!("Done! Assembled successfully."),
         Err(err) => {
             eprintln!(
@@ -123,9 +130,34 @@ fn main() {
     }
 }
 
-fn write_to_file(path: &PathBuf, buffer: &[u8]) -> io::Result<()> {
+fn write_vhdl_to_file(path: &PathBuf, buffer: Vec<u32>) -> io::Result<()> {
     let mut file = File::create(path)?;
 
-    file.write_all(buffer)?;
+    writeln!(file, "DEPTH = 1024;")?;
+    writeln!(file, "WIDTH = 32;")?;
+    writeln!(file, "ADDRESS_RADIX = DEC;")?;
+    writeln!(file, "DATA_RADIX = BIN;")?;
+    writeln!(file, "CONTENT")?;
+    writeln!(file, "BEGIN")?;
+
+    for (index, word) in buffer.iter().enumerate() {
+        let index = 4 * index;
+        writeln!(file, "{index} : {word:0>32b};")?;
+    }
+
+    writeln!(file, "END;")?;
+
+    file.flush()
+}
+
+fn write_to_file(path: &PathBuf, buffer: Vec<u32>) -> io::Result<()> {
+    let mut file = File::create(path)?;
+
+    let buffer = buffer
+        .into_iter()
+        .flat_map(u32::to_be_bytes)
+        .collect::<Vec<u8>>();
+
+    file.write_all(&buffer)?;
     file.flush()
 }
